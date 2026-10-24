@@ -1,0 +1,18 @@
+# Local agent state and settings
+.claude/*.local.*
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Secrets
+.env
+.env.*
+
+# Build output
+dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

@@ -1,0 +1,22 @@
+name: Outdated fact
+description: A product, tool or platform claim in a skill is no longer true.
+labels: ["facts"]
+body:
+  - type: input
+    id: claim
+    attributes:
+      label: The claim, quoted from the skill
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: What's true now
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Link to a current official source
+    validations:
+      required: true

@@ -1,0 +1,32 @@
+{
+  "name": "milesradford-skills",
+  "description": "Skills for building and maintaining open-source projects with an AI agent.",
+  "owner": {
+    "name": "MilesRadford",
+    "url": "https://github.com/milesradford99"
+  },
+  "plugins": [
+    {
+      "name": "oss-mentor",
+      "source": "./",
+      "strict": false,
+      "description": "Maintainer-partner for your open-source project: audits the repo, does routine setup as reviewable PRs, and brings you only the decisions that are yours.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "development",
+      "tags": ["open-source", "github", "maintainer", "release", "security"],
+      "skills": ["./skills/oss-mentor"]
+    },
+    {
+      "name": "oss-design",
+      "source": "./",
+      "strict": false,
+      "description": "Proportional product, tech and UI/UX design: convention first, distinctive where it counts, tested with a fresh agent and a blind critic.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "design",
+      "tags": ["design", "ux", "architecture", "accessibility", "dx"],
+      "skills": ["./skills/oss-design"]
+    }
+  ]
+}

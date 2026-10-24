@@ -1,0 +1,35 @@
+name: Skill misbehaved
+description: A skill led an agent to do something wrong, unsafe or outdated.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Found a way a skill could make an agent leak secrets, run untrusted code or act without approval? Please report it privately instead: see SECURITY.md.
+  - type: dropdown
+    id: skill
+    attributes:
+      label: Skill
+      options: [oss-mentor, oss-design]
+    validations:
+      required: true
+  - type: input
+    id: agent
+    attributes:
+      label: Agent and model
+      placeholder: "e.g. Claude Code 2.1.310 with Opus 5.5"
+    validations:
+      required: true
+  - type: textarea
+    id: prompt
+    attributes:
+      label: What you asked
+    validations:
+      required: true
+  - type: textarea
+    id: happened
+    attributes:
+      label: What the agent did, and what you expected instead
+      description: Quote the part of the skill you think caused it, if you can.
+    validations:
+      required: true
