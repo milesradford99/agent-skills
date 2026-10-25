@@ -1,0 +1,7 @@
+node_modules/
+*/renders/
+*/media/
+*/audio/*.wav
+*/assets/plates/
+.env*
+*.local.*

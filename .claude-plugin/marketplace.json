@@ -1,6 +1,6 @@
 {
   "name": "milesradford-skills",
-  "description": "Skills for building and maintaining open-source projects with an AI agent.",
+  "description": "Skills for building and maintaining open-source projects, and for making videos, with an AI agent.",
   "owner": {
     "name": "MilesRadford",
     "url": "https://github.com/milesradford99"
@@ -27,6 +27,17 @@
       "category": "design",
       "tags": ["design", "ux", "architecture", "accessibility", "dx"],
       "skills": ["./skills/oss-design"]
+    },
+    {
+      "name": "video-director",
+      "source": "./",
+      "strict": false,
+      "description": "Turns loose inspiration into a finished video. It locks the format, asks at most 3 questions, shows 10-second demos, builds the video as code that is cheap to revise, and runs a blind reviewer loop.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "media",
+      "tags": ["video", "motion-graphics", "animation", "ffmpeg", "music"],
+      "skills": ["./skills/video-director"]
     }
   ]
 }

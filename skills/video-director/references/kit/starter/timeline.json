@@ -1,0 +1,13 @@
+{
+  "meta": { "title": "Starter", "width": 1920, "height": 1080, "fps": 30, "duration": 4.0, "seed": "replace-with-a-random-string", "background": "#101114" },
+  "audio": { "bpm": 120, "offset": 0.0, "out": "audio/mix.wav", "lufs": -14, "true_peak": -1 },
+  "shots": [
+    { "id": "title", "start": 0.0, "end": 2.6, "params": { "text": "Hello", "hit": "cue:hook" } },
+    { "id": "outro", "start": 2.5, "end": 4.0, "params": { "text": "made with code" } }
+  ],
+  "cues": [
+    { "id": "hook", "t": 0.5, "kind": "hook", "sfx": "audio/sfx/impact.wav", "gain_db": -3, "on_beat": true },
+    { "id": "signature", "t": 2.5, "kind": "signature", "sfx": "audio/sfx/whoosh.wav", "gain_db": -8, "on_beat": true }
+  ],
+  "qc_allow": [ { "kind": "freeze", "start": 3.2, "end": 4.0, "why": "end hold" } ]
+}
