@@ -23,7 +23,7 @@ video/
     review/round-N/    qc.json, pack/, review.md
 ```
 
-Start a project from whatever the chosen demo already is. For a blank start, `lib/starter-onetake/` is a hand-written one-take canvas page with timed captions, and `lib/starter/` uses the shot runtime. Start from a recipe only for a series, a brand, or when the user asks. Commit after each version: `git -C video add -A && git -C video commit -m "v3: hook on the downbeat, warmer palette"`. If `video/` is inside the user's repo, ask once before committing there; otherwise `git init` it.
+Start a project from the chosen direction's keyframe page. For a blank start, `lib/starter-onetake/` is a hand-written one-take canvas page with timed captions, and `lib/starter/` uses the shot runtime. Start from a recipe only for a series, a brand, or when the user asks. Commit after each version: `git -C video add -A && git -C video commit -m "v3: hook on the downbeat, warmer palette"`. If `video/` is inside the user's repo, ask once before committing there; otherwise `git init` it.
 
 ## Preflight
 

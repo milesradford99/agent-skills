@@ -1,8 +1,8 @@
 # Originality
 
-Models choose the most predictable option at every step, and preference training pushes them further toward the consensus answer. Without outside pressure, demos converge on the same fonts, gradients and fade-and-slide motion. Variety has to come from outside the model, and distinctiveness has to be spent in one or two places. These methods adapt the repo's `oss-design` skill and Anshu Chimala's "How to turn your AI into a world-class designer" (Lenny's Newsletter, 2026) to video.
+Models choose the most predictable option at every step, and preference training pushes them further toward the consensus answer. Without outside pressure, directions converge on the same fonts, gradients and fade-and-slide motion. Variety has to come from outside the model, and distinctiveness has to be spent in one or two places. These methods adapt the repo's `oss-design` skill and Anshu Chimala's "How to turn your AI into a world-class designer" (Lenny's Newsletter, 2026) to video.
 
-Use them for the "random draw" and "extreme" directions in phase 2, and for everything in a video when the user asks for something more unusual.
+Use them for the two "random draw" directions and the "extreme" direction in phase 2, and for everything in a video when the user asks for something more unusual.
 
 ## 1. Draw from outside the model
 
@@ -32,17 +32,17 @@ The best ambitious briefs bring in something from outside motion design: a game,
 
 1. List 6–10 headline-only ideas, one line each with no detail. Include the drawn directions and one deliberate extreme.
 2. Let the user react in their own words ("this one, but less playful", "never neon"). Treat dislikes as avoid-list entries.
-3. Develop only the picks into 10-second demos, then write the build spec for the chosen one.
+3. Develop the picks into 3-keyframe directions, then write the build spec for the chosen one.
 
 Always offer "pick for me", which takes your recommendation and records why.
 
 ## 4. One deliberate extreme
 
-One of the three demos breaks a convention on purpose: radical asymmetry, dissonant colour, uncomfortable negative space, music held back until the end, a single unbroken shot. Show it at demo depth only; develop it only if the user picks it. If the user picks it, its extremes come along only where they chose them: a demo without music doesn't make the final piece silent. It makes the other two directions easier to judge and sometimes wins.
+One of the five directions breaks a convention on purpose: radical asymmetry, dissonant colour, uncomfortable negative space, music held back until the end, a single unbroken shot. Show it as keyframes only; develop it only if the user picks it. If the user picks it, its extremes come along only where they chose them: a direction proposing silence doesn't make the final piece silent. It makes the other two directions easier to judge and sometimes wins.
 
 ## 5. A critic that names the bar
 
-In addition to the scored review in `review.md`, a direction critic can push a demo past "fine". Give a fresh subagent only the stills or contact sheet and ask it to:
+In addition to the scored review in `review.md`, a direction critic can push a direction past "fine". Give a fresh subagent only its keyframes or contact sheet and ask it to:
 
 1. name the aesthetic it sees;
 2. describe how a top studio would execute that aesthetic;

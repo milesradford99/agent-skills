@@ -1,6 +1,6 @@
 ---
 name: "video-director"
-description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, then shows three 10-second demos and a story card so the user confirms what the video says. Builds it as code under a small render contract (any renderer, headless-browser frames plus ffmpeg, Blender for 3D, Python for music and sound), continuous by default with words on screen and a music bed, not slides read by a synthetic voice. Tuning notes become data edits and only changed segments re-render. An audience pass checks viewer value and a blind reviewer gives timecoded fixes. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
+description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, then shows five directions as keyframes and a story card so the user confirms what the video says. Builds it as code under a small render contract (any renderer, headless-browser frames plus ffmpeg, Blender for 3D, Python for music and sound), continuous by default with words on screen and a music bed, not slides read by a synthetic voice. Tuning notes become data edits and only changed segments re-render. An audience pass checks viewer value and a blind reviewer gives timecoded fixes. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
 ---
 
 # Video Director
@@ -9,7 +9,7 @@ The user brings inspiration and taste. You decide how it's made, build it as cod
 
 What this adds over a capable agent with no skill:
 1. **The right kind of video.** "Make it striking" is open to many readings, and an agent builds the form it can execute. The format is locked first, from a short preselected list, never discovered after a wasted render.
-2. **No decisions about the making.** Toolchain, codecs, easing, mix and file layout are yours. The user answers at most 3 questions and reacts to concrete demos instead of describing a feel in adjectives.
+2. **No decisions about the making.** Toolchain, codecs, easing, mix and file layout are yours. The user answers at most 3 questions and reacts to concrete keyframes instead of describing a feel in adjectives.
 3. **Full creative range, cheap iteration.** You write whatever renderer the idea needs, under one small render contract. Once a direction is locked, the knobs notes usually touch move into data, picture and sound share named cues, and only changed segments re-render. "Hit the title on the drop" becomes a cue edit, and a better idea is still a code rewrite.
 4. **Worth watching, not just well made.** The user confirms what the video *says* (a story card) before anything long is built, and a fresh "audience" agent reads the script and the rough cut as the target viewer: would they keep watching, what did they learn, what rang false.
 5. **An honest quality bar.** A fresh reviewer that never saw your reasoning scores the render against anchored criteria. You report the scores and remaining weaknesses as they are.
@@ -47,8 +47,8 @@ Footage edits (MAD, montage, trailer) are cut-driven by nature; there, continuit
 
 Every piece has a music bed unless the user says otherwise. Silence is a tool for one moment (the beat before the payoff), not a whole soundtrack, and a track of only clicks and ticks reads as unfinished.
 - Use the user's own or licensed track if they have one. Otherwise compose one with `lib/music.py`: it follows the cues (soft from the hook, building, a held beat of near-silence before the signature moment, full on it, resolving at the end). Pick a mood that fits the brief (`warm`, `calm`, `bright`, `tense`) and say it on the brief card.
-- Demos include music too, so the user judges the direction with its sound.
-- "No music" is a user decision, recorded as `audio.no_music` with their reason. A deliberate-extreme demo may go without music; the final piece still asks.
+- Each direction names its music mood in one line; the score is first heard in the motion test or rough cut.
+- "No music" is a user decision, recorded as `audio.no_music` with their reason. A deliberate-extreme direction may propose silence; the final piece still asks.
 - Mix and master to the platform target (−14 LUFS, −1 dBTP for web). Never lower the target to make a thin soundtrack pass QC.
 
 ## References (load only what the current phase needs)
@@ -71,7 +71,7 @@ If a reference is missing, keep going with the defaults in this file and say whi
 |---|---|---|
 | 0 Intake (silent) | Read all inspiration. Sample frames from reference videos. Run preflight. Set up or reuse `video/`. | None |
 | 1 Brief card | One card, at most 3 questions | Seconds |
-| 2 Directions and story | Three 10-second demos, plus the story card (what the video says), checked by the audience pass | Pick a look; approve or edit the story |
+| 2 Directions and story | Five directions as 3 keyframes each, plus the story card (what the video says), checked by the audience pass | Pick a look; approve or edit the story |
 | 3 Spec and build | Spec, timeline, key stills, motion, music and sound | None |
 | 4 Rough cut | Full length, low-res, with the audience pass's read. Required for pieces over 60 s and for anything that explains, argues or sells | Approve, or timestamped notes |
 | 5 Review loop | QC, fresh craft reviewer, revise, re-render, until the stop rule | None |
@@ -95,13 +95,16 @@ A brand kit, if present, is used without asking.
 
 ### 2 Directions and story
 
-- Build **three genuinely different directions**: one led by the user's references, one from a random vocabulary or seed draw (`originality.md`), and one deliberate extreme. Use fresh subagents in parallel so they don't converge, each given only the brief card and its direction line.
-- **Code freely at this stage.** Any renderer (canvas, WebGL, SVG, DOM, three.js, a custom engine), any structure, nothing pulled into data yet. At least one demo is built from scratch without kit components or recipes.
-- Each is a 10-second demo using the real content (the real song, title or product), plus 4–6 stills at key moments. Run `qc.py` before showing anything.
-- **While the demos build, write the story card** (`spec-template.md`): the one-sentence promise to the viewer, the 3–5 things they'll understand or feel, the beat list with every on-screen line in the final language, the key moment, every number with its source, what's deliberately left out, and the length. For anything that explains, argues or sells, run the **audience pass on the script** (`review.md`) before showing it: it's text only and cheap, and it catches dull, confusing, preachy or false content before a frame is rendered.
-- Show the demos side by side on one page (an Artifact or HTML page if available, otherwise a tiled PNG and file paths), with the story card and the audience read beneath. Ask two things at once: which look ("B, but warmer and faster" is the ideal answer), and whether the story is right ("approve" or line edits). The build doesn't start until the story is approved, or explicitly left to you.
-- **Format-miss rule.** If the user rejects all three, or describes a different kind of object ("I meant cutting the trailers"), don't iterate on style. Show the format list again with your best re-guess first, then rebuild the demos.
-- The picked demo's code is the start of the build. Never rebuild it from scratch.
+Directions are shown as **keyframes, not videos**: rendering and checking a demo video costs far more time and tokens than it tells the user, and the look is judged from stills.
+
+- Build **five genuinely different directions**: one led by the user's references, two from separate random vocabulary or seed draws (`originality.md`), one deliberate extreme, and one best-in-class take on the format's conventions, so there is always a dependable option. Use fresh subagents in parallel so they don't converge, each given only the brief card and its direction line.
+- **Each direction is 3 keyframes** using the real content (the real title, words, numbers or product): the hook, the key moment and the end. Render them from a small `seek(t)` page (`render.mjs --at`), so the picked direction's code grows into the build. No video, no audio, no QC at this stage. Each builder returns its three stills plus two lines: how it moves between the frames (the transitions and camera), and the music mood.
+- **Code freely at this stage.** Any renderer (canvas, WebGL, SVG, DOM, three.js, a custom engine), any structure, nothing pulled into data yet. At least one direction is built from scratch without kit components or recipes. Keep each builder small: three good frames, one self-check, done.
+- Tile each direction's frames into one strip (`frames.py tile strip.png hook.png key.png end.png`), and have one short-lived subagent check the five strips for cropped or missing text, broken fonts and empty frames before the user sees them.
+- **While the directions build, write the story card** (`spec-template.md`): the one-sentence promise to the viewer, the 3–5 things they'll understand or feel, the beat list with every on-screen line in the final language, the key moment, every number with its source, what's deliberately left out, and the length. For anything that explains, argues or sells, run the **audience pass on the script** (`review.md`) before showing it: it's text only and cheap, and it catches dull, confusing, preachy or false content before a frame is rendered.
+- Show the five strips on one page (an Artifact or HTML page if available, otherwise the strip PNGs and file paths), each with its name, motion line and music mood, and the story card and audience read beneath. Ask two things at once: which look ("C, but with B's colours" is the ideal answer), and whether the story is right ("approve" or line edits). The build doesn't start until the story is approved, or explicitly left to you.
+- **Format-miss rule.** If the user rejects all five, or describes a different kind of object ("I meant cutting the trailers"), don't iterate on style. Show the format list again with your best re-guess first, then rebuild the directions.
+- The picked direction's page is the start of the build. Never rebuild it from scratch. If its appeal depends on motion the stills can't show (liquid, kinetic type, a camera move), render a 10-second motion test of that one direction, with music, before the full build.
 
 ### 3 Spec and build
 
@@ -134,7 +137,7 @@ Full length at low resolution, with a timecoded keyframe strip and the audience 
 
 Follow `references/review.md`. In short:
 - `qc.py` writes `review/round-N/qc.json`; `frames.py review` writes a budgeted pack (about 120 sheet cells, at most 10 bursts and 6 stills, whatever the length) and prints its token cost.
-- A **fresh** subagent (never a fork, which inherits your reasoning) gets only those paths, the brief card, the chosen demo stills and the rubric. It scores 7 dimensions on anchored scales and returns 5–10 timecoded fixes, at least one aimed at concept or impact, and removals count as fixes.
+- A **fresh** subagent (never a fork, which inherits your reasoning) gets only those paths, the brief card, the chosen direction's keyframes and the rubric. It scores 7 dimensions on anchored scales and returns 5–10 timecoded fixes, at least one aimed at concept or impact, and removals count as fixes.
 - **Pass:** lowest dimension at least 7.5 with zero QC failures. Two rounds by default, a third only if the lowest score rose by 0.5 or more. From round 2 the reviewer compares the two latest versions blind on `frames.py pair` images (same timecodes side by side), not two full packs; if the new one loses, revert to the better one and stop.
 
 ### 6 Delivery
@@ -149,7 +152,7 @@ Offer one revision round, and handle it under the code-first rules. Never claim 
 
 ## When the user wants something more unusual
 
-When the user asks for something more distinctive, rejects demos as "too generic", or names `oss-design`, use `references/originality.md`. It applies `oss-design`'s methods to video: draws from outside the model (a seed string or vocabulary draw made with a real RNG), cross-domain imports that bring a mechanism rather than a look, broad-then-steered ideation, one deliberate extreme, a critic that names the aesthetic and how a top studio would execute it, and subtraction. Distinctiveness goes in one or two places, the signature moment and the look, never in legibility or the hook.
+When the user asks for something more distinctive, rejects the directions as "too generic", or names `oss-design`, use `references/originality.md`. It applies `oss-design`'s methods to video: draws from outside the model (a seed string or vocabulary draw made with a real RNG), cross-domain imports that bring a mechanism rather than a look, broad-then-steered ideation, one deliberate extreme, a critic that names the aesthetic and how a top studio would execute it, and subtraction. Distinctiveness goes in one or two places, the signature moment and the look, never in legibility or the hook.
 
 ## Token budget
 
@@ -173,7 +176,7 @@ Most tokens in a long video session go to context that is re-read on every turn,
 | Needs | If unavailable |
 |---|---|
 | Structured question tool | Numbered options, recommendation first |
-| Fresh-context subagents | Build demos one after another; review with a separate prompt containing only artifact paths, labeled as weaker self-review |
+| Fresh-context subagents | Build the five directions one after another; review with a separate prompt containing only artifact paths, labeled as weaker self-review |
 | Artifact or HTML preview page | A tiled contact-sheet PNG plus file paths |
 | Node and Playwright | Python plus Pillow or Cairo frame drawing piped to ffmpeg, keeping the same `timeline.json` contract |
 | GPU | Software GL for pages; Cycles on CPU with low samples, or a 2.5D page version of a 3D idea |

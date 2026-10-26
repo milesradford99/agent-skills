@@ -23,6 +23,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
     - Caption reading-speed checks.
     - New `frames.py tile` and `pair` subcommands.
   - Preflight checks the login shell's PATH before reinstalling tools.
+  - Directions are five sets of 3 keyframes (hook, key moment, end), not three 10-second demo videos. One is led by the references, two come from random draws, one is a deliberate extreme and one is a best-in-class conventional take. A 10-second motion test is rendered only for the chosen direction, and only when its appeal depends on motion.
 - Skills may carry an optional `references/` folder; the validator checks that every `references/...` path a SKILL.md mentions exists.
 - Claude Code plugin marketplace (`milesradford-skills`) with one plugin per skill.
 - Skill validator, tests and CI.

@@ -46,7 +46,7 @@ For a rough cut, give it the contact sheets and the captions file, not bursts or
    - at most 10 bursts of every native frame in a 0.5 s window, at the key cues first, then cuts, spread across the piece, for motion;
    - at most 6 stills at 1280 px wide at key cues and the end, for type and texture (use `frames.py still` at full resolution only for a frame where small text is in question);
    - a waveform and a spectrogram of the soundtrack, for sound and sync.
-3. Launch the reviewer (template below) as a **fresh** subagent, never a fork. Pass only paths: the pack, `qc.json`, `brief.md`, the chosen demo's stills. From round 2, add `frames.py pair <previous> <current> <dir> <timecodes>` images at the 6–8 moments that changed most, instead of a second full pack.
+3. Launch the reviewer (template below) as a **fresh** subagent, never a fork. Pass only paths: the pack, `qc.json`, `brief.md`, the chosen direction's keyframes. From round 2, add `frames.py pair <previous> <current> <dir> <timecodes>` images at the 6–8 moments that changed most, instead of a second full pack.
 4. Apply the fixes under the iteration rules in `pipeline.md`, re-render, and run the next round.
 
 A pack costs roughly 20–25 images and 40–60k image tokens whatever the length; a 4-minute film no longer costs eight times a 30-second one. The reviewer's text answer is what returns to the main conversation; the producer doesn't open the pack's images itself, except the one or two frames a decision hangs on.

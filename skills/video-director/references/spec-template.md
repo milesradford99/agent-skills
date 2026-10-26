@@ -1,6 +1,6 @@
 # Spec template
 
-## Story card (phase 2, shown to the user with the demos)
+## Story card (phase 2, shown to the user with the five directions)
 
 What the video *says*, on one screen, in the final language. The user approves it or edits lines; the build waits for that.
 
