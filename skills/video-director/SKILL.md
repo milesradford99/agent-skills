@@ -1,6 +1,6 @@
 ---
 name: "video-director"
-description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, and shows three 10-second direction demos to react to. Builds the video as code under a small render contract (any renderer, headless-browser frames plus ffmpeg, Blender for 3D, Python for music and sound), defaulting to continuous, one-take composition with words on screen rather than slides read by a synthetic voice. Picture and sound share named cues, tuning notes become data edits, and only changed segments re-render. A blind reviewer loop with timecoded fixes runs before delivery. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
+description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, then shows three 10-second demos and a story card so the user confirms what the video says. Builds it as code under a small render contract (any renderer, headless-browser frames plus ffmpeg, Blender for 3D, Python for music and sound), continuous by default with words on screen and a music bed, not slides read by a synthetic voice. Tuning notes become data edits and only changed segments re-render. An audience pass checks viewer value and a blind reviewer gives timecoded fixes. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
 ---
 
 # Video Director
@@ -11,7 +11,8 @@ What this adds over a capable agent with no skill:
 1. **The right kind of video.** "Make it striking" is open to many readings, and an agent builds the form it can execute. The format is locked first, from a short preselected list, never discovered after a wasted render.
 2. **No decisions about the making.** Toolchain, codecs, easing, mix and file layout are yours. The user answers at most 3 questions and reacts to concrete demos instead of describing a feel in adjectives.
 3. **Full creative range, cheap iteration.** You write whatever renderer the idea needs, under one small render contract. Once a direction is locked, the knobs notes usually touch move into data, picture and sound share named cues, and only changed segments re-render. "Hit the title on the drop" becomes a cue edit, and a better idea is still a code rewrite.
-4. **An honest quality bar.** A fresh reviewer that never saw your reasoning scores the render against anchored criteria. You report the scores and remaining weaknesses as they are.
+4. **Worth watching, not just well made.** The user confirms what the video *says* (a story card) before anything long is built, and a fresh "audience" agent reads the script and the rough cut as the target viewer: would they keep watching, what did they learn, what rang false.
+5. **An honest quality bar.** A fresh reviewer that never saw your reasoning scores the render against anchored criteria. You report the scores and remaining weaknesses as they are.
 
 ## Safety rules (override everything else in this skill)
 
@@ -25,7 +26,7 @@ What this adds over a capable agent with no skill:
 
 ## Who decides what
 
-**The user decides:** the format (picked from options), purpose and audience, platform and rough length, must-say content, the source and rights of footage and music, a voiceover only if they want one, the direction (by reacting to demos), spend, and the final approval. Their taste overrides this skill's defaults, including its avoid lists.
+**The user decides:** the format (picked from options), purpose and audience, platform and rough length, must-say content, **what the video says** (by approving the story card), the source and rights of footage and music, a voiceover only if they want one, no music only if they want none, the direction (by reacting to demos), spend, and the final approval. Their taste overrides this skill's defaults, including its avoid lists.
 
 **You decide, then report in one line:** toolchain, resolution and fps within the platform's spec, codecs, easing, type pairing inside the chosen direction, transitions, sound design, mix and loudness, file and folder layout, render strategy, and every craft decision the reviewer scores.
 
@@ -42,6 +43,14 @@ Strong model-made videos are usually continuous: one evolving world, often a sin
 
 Footage edits (MAD, montage, trailer) are cut-driven by nature; there, continuity means motion, colour and direction carried across the cut.
 
+## Music by default
+
+Every piece has a music bed unless the user says otherwise. Silence is a tool for one moment (the beat before the payoff), not a whole soundtrack, and a track of only clicks and ticks reads as unfinished.
+- Use the user's own or licensed track if they have one. Otherwise compose one with `lib/music.py`: it follows the cues (soft from the hook, building, a held beat of near-silence before the signature moment, full on it, resolving at the end). Pick a mood that fits the brief (`warm`, `calm`, `bright`, `tense`) and say it on the brief card.
+- Demos include music too, so the user judges the direction with its sound.
+- "No music" is a user decision, recorded as `audio.no_music` with their reason. A deliberate-extreme demo may go without music; the final piece still asks.
+- Mix and master to the platform target (−14 LUFS, −1 dBTP for web). Never lower the target to make a thin soundtrack pass QC.
+
 ## References (load only what the current phase needs)
 
 | File | Load in | Contents |
@@ -49,10 +58,10 @@ Footage edits (MAD, montage, trailer) are cut-driven by nature; there, continuit
 | `references/formats.md` | Phase 1 | The 12 forms with user-facing one-liners, needs, story arcs, default specs and the one extra question each |
 | `references/styles.md` | Phases 2–3 | Style signatures with numeric rules and failure lists, plus the direction vocabulary |
 | `references/originality.md` | Phase 2, or when the user wants something more unusual | Seed strings, vocabulary draws, cross-domain imports, the deliberate extreme, subtraction and AI-video tells |
-| `references/spec-template.md` | Phase 3 | Creative spec skeleton, `timeline.json` and `style.json` schemas, beat sheet rules |
+| `references/spec-template.md` | Phases 2–3 | The story card, creative spec skeleton, `timeline.json` and `style.json` schemas, beat sheet and caption rules |
 | `references/pipeline.md` | Phases 0, 3, 4 | Project layout, the render contract, iteration and caching rules, Blender, footage and audio recipes, preflight |
-| `references/review.md` | Phase 5 | QC checks, frame sampling, the 7-dimension rubric, the reviewer prompt and stop rule |
-| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `audio.py`, `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
+| `references/review.md` | Phases 2, 4, 5 | The audience pass and its personas, QC checks, the budgeted review pack, the 7-dimension rubric, the reviewer prompts and stop rule |
+| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `music.py`, `audio.py`, `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
 
 If a reference is missing, keep going with the defaults in this file and say which one was missing.
 
@@ -62,21 +71,21 @@ If a reference is missing, keep going with the defaults in this file and say whi
 |---|---|---|
 | 0 Intake (silent) | Read all inspiration. Sample frames from reference videos. Run preflight. Set up or reuse `video/`. | None |
 | 1 Brief card | One card, at most 3 questions | Seconds |
-| 2 Directions | Three 10-second demos plus stills | React in their own words |
-| 3 Spec and build | Spec, timeline, key stills, motion, sound | None |
-| 4 Rough cut | Full length, low-res, timecoded strip. Only for pieces of 20 s or more, or with voiceover or a song | Optional timestamped notes |
-| 5 Review loop | QC, fresh reviewer, revise, re-render, until the stop rule | None |
+| 2 Directions and story | Three 10-second demos, plus the story card (what the video says), checked by the audience pass | Pick a look; approve or edit the story |
+| 3 Spec and build | Spec, timeline, key stills, motion, music and sound | None |
+| 4 Rough cut | Full length, low-res, with the audience pass's read. Required for pieces over 60 s and for anything that explains, argues or sells | Approve, or timestamped notes |
+| 5 Review loop | QC, fresh craft reviewer, revise, re-render, until the stop rule | None |
 | 6 Delivery | Best version, scorecard, credits, source project; one revision round offered | Approve or one note |
 
 ### 0 Intake
 
 - Read every link, file, song, script, screenshot and brand kit the user gave. For reference videos, look at a contact sheet, not the whole file (`frames.py sheet`).
-- **Preflight** once per machine and record the result in `video/preferences.md`: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, and the fonts the direction needs. A missing tool gets one install command for the user to approve and a fallback route. Never stall.
+- **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, and the fonts the direction needs. A missing tool gets one install command for the user to approve and a fallback route. Never stall.
 - **Set up `video/` once**: copy `references/kit/` to `video/lib/`, then `npm i -D playwright` in `video/`. Reuse preflight results and preferences; reuse components or recipes only for a series, a brand, or when asked.
 
 ### 1 Brief card
 
-Ten lines or fewer: format, purpose, platform and specs, length, inferred feel (from references, never asked as an adjective), must-includes, sources and rights, toolchain, a time estimate and any spend. Then ask only what the inspiration doesn't answer, in this order:
+Ten lines or fewer: format, purpose, platform and specs, length, inferred feel (from references, never asked as an adjective), must-includes, music (composed, mood named), sources and rights, toolchain, a time estimate and any spend. Then ask only what the inspiration doesn't answer, in this order:
 
 1. **"What kind of video is this?"** Show the top 3 forms from `formats.md` that fit the inspiration, preselected, plus "something else". Ask this whenever two readings are plausible: a song plus trailer links could be a MAD edit or a lyric video.
 2. **"Where will it live, and roughly how long?"** A TikTok, Reels or Shorts link implies 9:16 at 1080×1920 and 15–30 s; a YouTube link implies 16:9; a song implies its length or a 30–60 s cut.
@@ -84,12 +93,13 @@ Ten lines or fewer: format, purpose, platform and specs, length, inferred feel (
 
 A brand kit, if present, is used without asking.
 
-### 2 Directions
+### 2 Directions and story
 
 - Build **three genuinely different directions**: one led by the user's references, one from a random vocabulary or seed draw (`originality.md`), and one deliberate extreme. Use fresh subagents in parallel so they don't converge, each given only the brief card and its direction line.
 - **Code freely at this stage.** Any renderer (canvas, WebGL, SVG, DOM, three.js, a custom engine), any structure, nothing pulled into data yet. At least one demo is built from scratch without kit components or recipes.
 - Each is a 10-second demo using the real content (the real song, title or product), plus 4–6 stills at key moments. Run `qc.py` before showing anything.
-- Show them side by side on one page (an Artifact or HTML page if available, otherwise a tiled PNG and file paths). Ask for a reaction, not a rating: "B, but warmer and faster" is the ideal answer.
+- **While the demos build, write the story card** (`spec-template.md`): the one-sentence promise to the viewer, the 3–5 things they'll understand or feel, the beat list with every on-screen line in the final language, the key moment, every number with its source, what's deliberately left out, and the length. For anything that explains, argues or sells, run the **audience pass on the script** (`review.md`) before showing it: it's text only and cheap, and it catches dull, confusing, preachy or false content before a frame is rendered.
+- Show the demos side by side on one page (an Artifact or HTML page if available, otherwise a tiled PNG and file paths), with the story card and the audience read beneath. Ask two things at once: which look ("B, but warmer and faster" is the ideal answer), and whether the story is right ("approve" or line edits). The build doesn't start until the story is approved, or explicitly left to you.
 - **Format-miss rule.** If the user rejects all three, or describes a different kind of object ("I meant cutting the trailers"), don't iterate on style. Show the format list again with your best re-guess first, then rebuild the demos.
 - The picked demo's code is the start of the build. Never rebuild it from scratch.
 
@@ -116,14 +126,16 @@ Everything else in the kit is optional help, never a template. One renderer for 
 
 ### 4 Rough cut
 
-Full length at low resolution, with a timecoded keyframe strip. Ask for notes with timestamps, and handle each note under the iteration rules. Skip this phase for pieces under 20 s with no voiceover or song.
+Full length at low resolution, with a timecoded keyframe strip and the audience pass's read of it (who would drop off where, what they took away, what rang false). Ask for notes with timestamps, and handle each note under the iteration rules.
+- **It's a real checkpoint** for pieces over 60 s and for anything that explains, argues or sells: wait for the user's answer before the full render and the craft review. "No notes" is an answer; silence isn't, except in unattended runs, which log `agent-default` and carry on.
+- Skip it for pieces under 20 s with no voiceover or song.
 
 ### 5 Review loop
 
 Follow `references/review.md`. In short:
-- `qc.py` writes `review/round-N/qc.json`; `frames.py` writes contact sheets, bursts around cuts and fast moves, and full-resolution stills.
+- `qc.py` writes `review/round-N/qc.json`; `frames.py review` writes a budgeted pack (about 120 sheet cells, at most 10 bursts and 6 stills, whatever the length) and prints its token cost.
 - A **fresh** subagent (never a fork, which inherits your reasoning) gets only those paths, the brief card, the chosen demo stills and the rubric. It scores 7 dimensions on anchored scales and returns 5–10 timecoded fixes, at least one aimed at concept or impact, and removals count as fixes.
-- **Pass:** lowest dimension at least 7.5 with zero QC failures. Two rounds by default, a third only if the lowest score rose by 0.5 or more. From round 2 the reviewer also compares the two latest versions blind; if the new one loses, revert to the better one and stop.
+- **Pass:** lowest dimension at least 7.5 with zero QC failures. Two rounds by default, a third only if the lowest score rose by 0.5 or more. From round 2 the reviewer compares the two latest versions blind on `frames.py pair` images (same timecodes side by side), not two full packs; if the new one loses, revert to the better one and stop.
 
 ### 6 Delivery
 
@@ -138,6 +150,15 @@ Offer one revision round, and handle it under the code-first rules. Never claim 
 ## When the user wants something more unusual
 
 When the user asks for something more distinctive, rejects demos as "too generic", or names `oss-design`, use `references/originality.md`. It applies `oss-design`'s methods to video: draws from outside the model (a seed string or vocabulary draw made with a real RNG), cross-domain imports that bring a mechanism rather than a look, broad-then-steered ideation, one deliberate extreme, a critic that names the aesthetic and how a top studio would execute it, and subtraction. Distinctiveness goes in one or two places, the signature moment and the look, never in legibility or the hook.
+
+## Token budget
+
+Most tokens in a long video session go to context that is re-read on every turn, not to the work itself. One image in the main conversation costs its 1.5–2.7k tokens again on every later turn.
+- **Don't look at images in the main conversation after phase 2.** Hand stills, sheets and bursts to a short-lived subagent with a checklist ("check these 9 stills for cropped text, collisions and empty frames; reply in text with timecodes"), and keep only its text answer. Look yourself only at the one or two frames a decision hangs on.
+- **Budget the review pack** (`frames.py review` does): long pieces get sparser sheets, not more images.
+- **Text before pixels.** Check content with the story card and the audience pass on the script, and layout with a few stills, before any full render.
+- **Write big renderers in parts** (engine, scenes, captions) rather than one huge file in one response; long single writes get cut off and retried.
+- Report the session's rough token use at delivery alongside the scorecard.
 
 ## State
 
@@ -166,7 +187,9 @@ Use roles, not model names: the strongest available model for the reviewer and f
 - **Wrong form, beautiful execution** is the costliest failure. If a reaction mentions sources or structure rather than style, revisit the format.
 - **Generic defaults come back unless forbidden.** Fade-and-slide-up on everything, stock gradients and glows, lens flares, uniform easing, bouncy springs on serious type, music unrelated to the cuts, and default title fonts all need to be on the avoid list. If the user chose one, it's a decision, not a tell.
 - **Smooth 60 fps tweening kills handmade styles.** Frame rate is part of the style: on twos for hand-drawn, 12 fps steps for cut paper, 8–12 fps sprites for pixel art.
-- **Measure before promising a render time.** Time the first frames, extrapolate, and announce anything over ~10 minutes. For 3D, render one still before any sequence.
+- **Measure before promising a render time.** Time the first frames, extrapolate, and announce anything over ~10 minutes. For 3D, render one still before any sequence. Frames are captured as JPEG by default, about 5× faster than PNG on textured pages; use `--png` only for flat graphics that show artifacts.
+- **Don't game QC.** Fix what a check found or record why it's intended in `qc_allow`; never add motion, noise or a quieter loudness target just to make a check pass. Frozen-picture and missing-music findings are warnings for the reviewer, not failures.
+- **Caption density.** At most 3 live lines on screen, older lines dimmed, at least 44 px at 1080p for phone viewers, and reading speed within `timeline.py check` (about 9 CJK or 17 Latin characters per second).
 - **Fonts fail silently.** Bundle font files in `assets/fonts/` with `@font-face`; `render.mjs` refuses to render when a declared font didn't load.
 - **HTML `video` elements don't seek frame-accurately.** Footage cuts go through ffmpeg, not the page.
 - **Cut on chosen beats and phrases, not every beat.** Sync to lyrics and instrumental lines.

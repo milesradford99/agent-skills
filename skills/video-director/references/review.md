@@ -1,19 +1,55 @@
 # Review
 
-Agents grade their own work too generously, and a reviewer that has seen the producer's reasoning grades the intent, not the screen. So review is two layers: measured QC first, then a fresh reviewer that sees only the output, the brief and the criteria.
+Agents grade their own work too generously, and a reviewer that has seen the producer's reasoning grades the intent, not the screen. Craft is also not value: a beautifully made video can still be dull, confusing or preachy for the person it's for. So review has three parts, each with a fresh agent that sees only the output and its criteria:
+
+1. **The audience pass** asks "is this worth watching, for the viewer it's for?" It runs on the script (phase 2, text only) and on the rough cut (phase 4).
+2. **Measured QC** catches technical faults.
+3. **The craft reviewer** scores how well it's made (phase 5).
+
+## The audience pass
+
+A fresh subagent plays 2–3 target viewers taken from the brief, at least one of them skeptical or hostile to the piece's stance. It never sees the spec or how the video was made. Use it on the story card and script before building, and on the rough cut's contact sheets and captions afterwards.
+
+For each persona it answers, in that viewer's voice:
+- **Stay or scroll:** would I still be watching at 3 s, 30 s and the end? Where exactly would I drop off, and why?
+- **What I got:** the takeaways in my own words. Compare these with the story card's takeaways; a takeaway nobody states back hasn't landed.
+- **Confused by:** terms, jumps or numbers I couldn't follow.
+- **Didn't believe or didn't like:** anything that felt preachy, one-sided, condescending, salesy or untrue, and any claim I'd want a source for.
+- **Would I share it, and what would I comment?** The first comment under the video, honestly.
+- **Value:** was it worth the time? 1–5, with one sentence.
+
+Then, out of character: the 3 changes that would most raise the value for these viewers, each tied to a beat or timecode.
+
+**Gate:** every takeaway on the story card is stated back by at least one persona, no persona drops off in the first 30 s for a reason the piece can fix, and nothing is flagged as untrue or unsourced. Fix content problems in the script before building; at the rough cut, fix them before the craft review. Show the user the audience read with the story card and the rough cut, briefly.
+
+Prompt template:
+
+```text
+You will read <a video script with on-screen words and timings | contact sheets and captions of a rough cut>.
+You didn't make it and don't know how it was made. Play each of these viewers in turn, honestly, including
+the parts they'd dislike: <persona 1 from the brief>; <persona 2>; <a skeptical persona>.
+<paths>
+For each viewer: stay or scroll at 3 s / 30 s / end (and where they'd leave); takeaways in their own words;
+what confused them; what they didn't believe or didn't like (preachy, one-sided, salesy, untrue, needs a source);
+would they share it and what they'd comment; value 1-5 with one sentence.
+Then, as yourself: the 3 changes that would most raise the value for these viewers, each with a beat or timecode.
+Reply in plain text, under 500 words.
+```
+
+For a rough cut, give it the contact sheets and the captions file, not bursts or full-resolution stills: it judges meaning and pacing, not pixels.
 
 ## Round order
 
 1. `python3 lib/qc.py <video> <slug>/timeline.json --out <slug>/review/round-N/qc.json`. Fix QC failures before spending a reviewer on them, unless a failure needs a judgment call.
-2. `python3 lib/frames.py review <video> <slug>/timeline.json <slug>/review/round-N/pack`. This writes:
-   - contact sheets at 2 fps with timecodes (structure and pacing);
-   - bursts of every native frame in a 0.5 s window around each cue and shot change (motion);
-   - full-resolution stills at the hook, signature, title and end (type and texture);
-   - a waveform and a spectrogram of the soundtrack (sound and sync).
-3. Launch the reviewer (template below) as a **fresh** subagent, never a fork. Pass only paths: the pack, `qc.json`, `brief.md`, the chosen demo's stills, and, from round 2, the previous version's pack.
+2. `python3 lib/frames.py review <video> <slug>/timeline.json <slug>/review/round-N/pack`. It writes a budgeted pack and prints its image count and approximate tokens:
+   - contact sheets with timecodes, about 120 cells in all (2 fps for short pieces, sparser for long ones), for structure and pacing;
+   - at most 10 bursts of every native frame in a 0.5 s window, at the key cues first, then cuts, spread across the piece, for motion;
+   - at most 6 stills at 1280 px wide at key cues and the end, for type and texture (use `frames.py still` at full resolution only for a frame where small text is in question);
+   - a waveform and a spectrogram of the soundtrack, for sound and sync.
+3. Launch the reviewer (template below) as a **fresh** subagent, never a fork. Pass only paths: the pack, `qc.json`, `brief.md`, the chosen demo's stills. From round 2, add `frames.py pair <previous> <current> <dir> <timecodes>` images at the 6–8 moments that changed most, instead of a second full pack.
 4. Apply the fixes under the iteration rules in `pipeline.md`, re-render, and run the next round.
 
-The pack for a 30-second film is roughly 25–30 images, about 70k image tokens. Downscale stills to at most 2,000 px per side if the request has more than 20 images.
+A pack costs roughly 20–25 images and 40–60k image tokens whatever the length; a 4-minute film no longer costs eight times a 30-second one. The reviewer's text answer is what returns to the main conversation; the producer doesn't open the pack's images itself, except the one or two frames a decision hangs on.
 
 ## Rubric
 
@@ -67,7 +103,7 @@ Evidence:
 - Bursts, every frame in 0.5 s around each cue and cut: <paths>
 - Full-resolution stills: <paths>
 - Waveform and spectrogram: <paths>
-<From round 2:> Two versions, A and B, in random order: <pack paths for each>
+<From round 2:> Pairs of A and B (random order, unlabeled) side by side at the same timecodes: <paths>
 
 What you can't see: motion between sampled frames, and the actual sound. Say where that limits you.
 
@@ -111,6 +147,8 @@ Finish       6.5       7.5
 Sound        6.0       7.5
 Technical    7.0       8.5
 QC           2 fails   pass
+Audience     <one line: who stays, the takeaway most stated back, the main remaining objection>
+Tokens       <rough session total, and the review share>
 Known weaknesses: <the fixes not made, one line each>
 ```
 

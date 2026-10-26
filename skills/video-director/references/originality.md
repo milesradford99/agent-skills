@@ -38,7 +38,7 @@ Always offer "pick for me", which takes your recommendation and records why.
 
 ## 4. One deliberate extreme
 
-One of the three demos breaks a convention on purpose: radical asymmetry, dissonant colour, uncomfortable negative space, no music until the end, a single unbroken shot. Show it at demo depth only; develop it only if the user picks it. It makes the other two directions easier to judge and sometimes wins.
+One of the three demos breaks a convention on purpose: radical asymmetry, dissonant colour, uncomfortable negative space, music held back until the end, a single unbroken shot. Show it at demo depth only; develop it only if the user picks it. If the user picks it, its extremes come along only where they chose them: a demo without music doesn't make the final piece silent. It makes the other two directions easier to judge and sometimes wins.
 
 ## 5. A critic that names the bar
 

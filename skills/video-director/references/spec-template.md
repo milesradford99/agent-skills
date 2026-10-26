@@ -1,5 +1,32 @@
 # Spec template
 
+## Story card (phase 2, shown to the user with the demos)
+
+What the video *says*, on one screen, in the final language. The user approves it or edits lines; the build waits for that.
+
+```markdown
+# <working title>
+
+**Promise:** <one sentence: what a viewer will understand or feel by the end>
+**For:** <the target viewer in one line, e.g. "a 45-year-old patient in a county town who has noticed fees changed">
+**Takeaways:** 3–5 things they can say afterwards in their own words
+**Stance:** <the view the piece takes, and the one honest caveat it includes>
+
+| Time | Beat | On-screen words (final language) | Picture |
+|---|---|---|---|
+| 0:00–0:08 | Hook | ... | ... |
+| ... | ... | ... | ... |
+
+**Key moment:** <timecode, what happens, why it's the payoff>
+**Numbers:** every figure on screen, each with its source (sources.md row)
+**Left out on purpose:** <topics or claims not covered, and why>
+**Length:** <m:ss> · **Music:** <composed, mood> · **Voice:** none
+**Audience read:** <the audience pass summary: who stays, who drops off where, what confused or rang false, what was fixed>
+```
+
+Keep it to what the user needs to judge content; craft details belong in the spec below.
+
+
 The spec turns the chosen direction into a brief the producer can check against frames, and the reviewer can score against. Write it to `video/<slug>/spec.md`. Every requirement is a number, a time or a named thing; "feels premium" can't be checked against a frame, "titles snap in 10 frames on `cubic-bezier(.7,0,.2,1)`" can.
 
 ## spec.md
@@ -51,7 +78,8 @@ parallax ratios, palette (hex), type families and minimum sizes, texture.>
 <Angles, lens or projection, moves per beat, safe areas for the platform.>
 
 ## Sound plan
-<Music approach (composed, user track, none), tempo, the cue list with each SFX, where silence goes.
+<Music: the user's track, or composed with lib/music.py (mood, tempo, sections that follow the cues).
+No music only if the user said so. The cue list with each SFX, and the one place silence is used.
 Voiceover and ducking only if the user asked for a voice.>
 
 ## Production steps
@@ -81,7 +109,9 @@ The single source of truth for timing. Picture and sound both read it.
   },
   "audio": {
     "bpm": 120, "offset": 0.0,
-    "music": "audio/music.wav", "music_gain_db": -2,
+    "music": "audio/music.wav", "mood": "warm", "music_gain_db": -4,
+    "sections": [{ "start": 0, "end": 0.4, "energy": 0 }, { "start": 0.4, "end": 4.5, "energy": 1 },
+                 { "start": 4.5, "end": 6.5, "energy": 2 }, { "start": 6.5, "end": 8.6, "energy": 3 }, { "start": 8.6, "end": 10, "energy": 1 }],
     "duck": [{ "start": 2.0, "end": 4.5, "db": -8 }],
     "out": "audio/mix.wav",
     "lufs": -14, "true_peak": -1
@@ -112,7 +142,9 @@ Rules, all checked by `timeline.py check`:
 - In shot code, read cue times with `ctx.cue("hook")`, never a copied number. A param written as `"cue:hook"` is a reference to that cue.
 - `qc_allow` lists intentional black, frozen or silent stretches so QC doesn't flag them.
 
-`captions` (optional) holds on-screen words with times: `[{ "start": 0.5, "end": 1.9, "text": "Start with a line." }]`. Keep each line's start on a cue or beat so words and sound land together.
+`captions` (optional) holds on-screen words with times: `[{ "start": 0.5, "end": 1.9, "text": "Start with a line." }]`. Keep each line's start on a cue or beat so words and sound land together. Density: at most 3 live lines on screen, older lines dimmed or cleared, at least 44 px at 1080p, and on screen long enough to read (`timeline.py check` warns above about 9 CJK or 17 Latin characters per second).
+
+`audio.sections` (optional) sets the score's energy, 0 (rest) to 3 (full); without it `music.py` derives an arc from the hook and signature cues. `audio.no_music` holds the user's reason when they don't want music; `timeline.py check` warns when neither it nor `audio.music` is set.
 
 A one-take piece usually has a single shot spanning the whole timeline and draws everything in one renderer; that's the normal case, not a workaround. Footage forms use the same `meta`, `audio` and `cues`, and replace `shots` with a cut list (see `pipeline.md`).
 

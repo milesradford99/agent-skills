@@ -1,6 +1,6 @@
 {
   "meta": { "title": "Starter", "width": 1920, "height": 1080, "fps": 30, "duration": 4.0, "seed": "replace-with-a-random-string", "background": "#101114" },
-  "audio": { "bpm": 120, "offset": 0.0, "out": "audio/mix.wav", "lufs": -14, "true_peak": -1 },
+  "audio": { "bpm": 120, "offset": 0.0, "music": "audio/music.wav", "mood": "bright", "music_gain_db": -4, "out": "audio/mix.wav", "lufs": -14, "true_peak": -1 },
   "shots": [
     { "id": "title", "start": 0.0, "end": 2.6, "params": { "text": "Hello", "hit": "cue:hook" } },
     { "id": "outro", "start": 2.5, "end": 4.0, "params": { "text": "made with code" } }

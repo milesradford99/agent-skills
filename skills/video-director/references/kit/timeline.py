@@ -18,6 +18,11 @@ import sys
 from pathlib import Path
 
 ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
+# Comfortable reading speed for captions (subtitle-style guidance, approximate): CJK characters or Latin
+# characters per second. Faster lines get a warning, because viewers can't read them and watch at once.
+MAX_CPS_CJK = 9.0
+MAX_CPS_LATIN = 17.0
 KINDS = {"hook", "signature", "title", "end", "hit", "plain"}
 
 
@@ -106,6 +111,21 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
         last = max(c.get("t", 0) for c in cues)
         if duration - last < 0.8:
             warnings.append(f"only {duration - last:.2f}s after the last cue; hold the end 0.8-1.2s")
+
+    for i, c in enumerate(tl.get("captions", [])):
+        text, start, end = c.get("text", ""), c.get("start"), c.get("end")
+        if start is None or end is None or end <= start:
+            errors.append(f"caption {i} needs start < end")
+            continue
+        cjk = len(CJK_RE.findall(text))
+        latin = len(re.sub(r"\s", "", text)) - cjk
+        rate = cjk / MAX_CPS_CJK + latin / MAX_CPS_LATIN  # seconds needed to read it
+        if rate > (end - start) + 1e-9:
+            warnings.append(f"caption {i} at {start:g}s needs ~{rate:.1f}s to read but is on for {end - start:.1f}s")
+
+    if not audio.get("music") and not audio.get("no_music"):
+        warnings.append("no music bed: set audio.music (lib/music.py composes one), "
+                        "or audio.no_music with the user's reason")
 
     # "cue:<id>" references in shot params must point at real cues.
     for s in shots or []:

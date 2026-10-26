@@ -3,9 +3,12 @@
 
     python3 lib/qc.py <slug>/renders/<slug>.mp4 <slug>/timeline.json [--out <slug>/review/round-1/qc.json]
 
-Checks resolution, frame rate (and variable frame rate), duration, codec, pixel format, audio format,
-integrated loudness and true peak, plus true-black stretches over 0.25 s, frozen stretches over 2 s and silences over 1 s not listed in qc_allow.
-Prints a one-line summary per failure; exit 1 if anything failed.
+Fails on: resolution, frame rate (and variable frame rate), duration, codec, pixel format, audio format,
+integrated loudness and true peak against the timeline's targets, true-black stretches over 0.25 s and
+silences over 1 s not listed in qc_allow.
+Warns (never fails) on: frozen picture over 2 s, and no music bed without a stated reason. Warnings go to
+the reviewer as information; don't add motion or noise just to make them disappear.
+Prints one line per failure and warning; exit 1 only on failures.
 """
 
 from __future__ import annotations
@@ -64,8 +67,8 @@ def evaluate(info: dict, events: dict, tl: dict) -> list[dict]:
     a = next((s for s in info["streams"] if s["codec_type"] == "audio"), None)
     checks: list[dict] = []
 
-    def add(name, ok, value, expected):
-        checks.append({"name": name, "ok": bool(ok), "value": value, "expected": expected})
+    def add(name, ok, value, expected, level="fail"):
+        checks.append({"name": name, "ok": bool(ok), "value": value, "expected": expected, "level": level})
 
     if v is None:
         add("video stream", False, "none", "present")
@@ -97,7 +100,10 @@ def evaluate(info: dict, events: dict, tl: dict) -> list[dict]:
     for kind in ("black", "freeze", "silence"):
         bad = [(s, e) for s, e in events[kind] if not allowed(kind, s, e, allow, duration)]
         add(f"no unplanned {kind}", not bad,
-            [f"{s:.2f}-{'end' if e is None else f'{e:.2f}'}s" for s, e in bad], "none outside qc_allow")
+            [f"{s:.2f}-{'end' if e is None else f'{e:.2f}'}s" for s, e in bad], "none outside qc_allow",
+            level="warn" if kind == "freeze" else "fail")
+    add("music bed", bool(audio.get("music") or audio.get("no_music")), audio.get("music") or "none",
+        "audio.music, or audio.no_music with the user's reason", level="warn")
     return checks
 
 
@@ -112,14 +118,19 @@ def main(argv: list[str]) -> int:
     has_audio = any(s["codec_type"] == "audio" for s in info["streams"])
     events = parse_events(analyze(video, has_audio))
     checks = evaluate(info, events, tl)
-    failed = [c for c in checks if not c["ok"]]
+    failed = [c for c in checks if not c["ok"] and c.get("level", "fail") == "fail"]
+    warned = [c for c in checks if not c["ok"] and c.get("level") == "warn"]
     report = {"video": str(video), "pass": not failed, "checks": checks, "events": events}
     if args.out:
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text(json.dumps(report, indent=2), encoding="utf-8")
     for c in failed:
         print(f"FAIL {c['name']}: {c['value']} (expected {c['expected']})")
-    print(f"{'PASS' if not failed else 'FAIL'} {len(checks) - len(failed)}/{len(checks)} checks" + (f" -> {args.out}" if args.out else ""))
+    for c in warned:
+        print(f"WARN {c['name']}: {c['value']} (expected {c['expected']})")
+    hard = [c for c in checks if c.get("level", "fail") == "fail"]
+    print(f"{'PASS' if not failed else 'FAIL'} {len(hard) - len(failed)}/{len(hard)} checks, {len(warned)} warnings"
+          + (f" -> {args.out}" if args.out else ""))
     return 0 if not failed else 1
 
 

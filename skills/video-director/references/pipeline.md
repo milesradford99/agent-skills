@@ -39,7 +39,7 @@ nvidia-smi -L 2>/dev/null || ls /dev/dri 2>/dev/null   # GPU present?
 fc-list : family | sort -u | head  # what fonts exist (bundle the ones you use anyway)
 ```
 
-Record the results in `video/preferences.md` so the next video skips this. A missing tool gets one install line for the user to approve (for example `sudo apt-get install -y ffmpeg nodejs npm blender` on Ubuntu, `brew install ffmpeg node blender` on macOS). Then move on with the fallback route from SKILL.md.
+Run these through the user's login shell (`$SHELL -lic '...'`) if the agent's shell doesn't find a tool: PATH set in `~/.zshrc` or `~/.bashrc` often isn't loaded in agent shells, and the tool is already there. Record the results in `video/preferences.md` so the next video skips this. A missing tool gets one install line for the user to approve (for example `sudo apt-get install -y ffmpeg nodejs npm blender` on Ubuntu, `brew install ffmpeg node blender` on macOS). Then move on with the fallback route from SKILL.md.
 
 ## The render contract (page route)
 
@@ -69,13 +69,14 @@ node lib/render.mjs --project <slug> --at 0.4,6.5,9.5        # key stills only
 node lib/render.mjs --project <slug> --scale 0.5 --step 2    # fast motion preview
 node lib/render.mjs --project <slug> --from 6 --to 7.5       # one moment
 python3 lib/audio.py sfx impact <slug>/audio/sfx/impact.wav  # whoosh, riser, impact, click, subdrop
+python3 lib/music.py <slug>/timeline.json                    # compose the score from the cues (needs numpy)
 python3 lib/audio.py mix <slug>/timeline.json                # cues + music + ducking, mastered to audio.out
 node lib/render.mjs --project <slug>                         # full render, picture cached per segment, audio muxed
 python3 lib/qc.py <slug>/renders/<slug>.mp4 <slug>/timeline.json --out <slug>/review/round-1/qc.json
 python3 lib/frames.py review <slug>/renders/<slug>.mp4 <slug>/timeline.json <slug>/review/round-1/pack
 ```
 
-`render.mjs` prints how many segments it reused and the measured ms per frame with an estimate. On a machine without a GPU, WebGL runs on SwiftShader (the default flags); pass `--chrome-arg=...` to change them. Use `--workers 4` on machines with spare cores.
+`render.mjs` prints how many segments it reused and the measured ms per frame with an estimate. Frames are captured as JPEG (quality 95) by default, about 5× faster than PNG on textured pages; pass `--png` for lossless capture of flat graphics. Workers default to half the CPU cores; more than that competes for CPU and slows the render. On a machine without a GPU, WebGL runs on SwiftShader (the default flags); pass `--chrome-arg=...` to change them. Changing the Python or audio tools in `lib/` doesn't invalidate the picture cache.
 
 ## Iteration rules
 
@@ -114,11 +115,11 @@ Revisions are edits to `cuts.json` and cue times, re-rendered by ffmpeg in secon
 
 ## Audio route
 
-- **Music.** If the user has no track, compose one: write notes with `pretty_midi` or `mido` following the cue sheet (tempo from `audio.bpm`, hits on the signature cue, silence before the payoff), render through FluidSynth or sfizz with CC0 or attributed samples (VSCO-2 CE, Salamander piano), and process with `pedalboard`. Sampled piano holds up; sampled strings and choir stay demo-quality.
+- **Music, by default.** Use the user's own or licensed track if they have one. Otherwise `lib/music.py` composes a bed in seconds from `audio.bpm`, `audio.mood` and the cues (or `audio.sections`): pad, soft arpeggio, sub bass and light percussion in a synthetic room, with a held beat of near-silence before the signature cue. It's dependable, not a film score. For a richer score, write notes with `pretty_midi` following the same sections and render them through FluidSynth or sfizz with CC0 or attributed samples (VSCO-2 CE, Salamander piano), then `pedalboard`; sampled piano holds up, sampled strings and choir stay demo-quality. Set `audio.music`, keep `music_gain_db` around −4 to −8 so captions' SFX sit on top, and run `audio.py mix`.
 - **SFX.** `audio.py sfx` covers whooshes, risers, impacts, clicks and sub drops. The mixer aligns each sound's transient, not its file start, to the cue time.
 - **Words.** Default to on-screen type and captions (`captions` in `timeline.json`), timed to cues. Voiceover only when the user asks: their own recording, or Kokoro (local, Apache-2.0); add a `duck` range under each line, and keep captions on.
 - **Generated music or voice from a paid API** is spend: estimate and ask first.
-- **Delivery.** `audio.py mix` masters to the timeline's `lufs` and `true_peak` (default −14 LUFS, −1 dBTP) with two-pass loudnorm and 48 kHz output.
+- **Delivery.** `audio.py mix` masters to the timeline's `lufs` and `true_peak` (default −14 LUFS, −1 dBTP for web) with two-pass loudnorm, a final 4×-oversampled limiter for sharp transients, and 48 kHz output. Keep the platform's target; a soundtrack too thin to reach it needs music, not a lower target.
 
 ## Generated plates
 

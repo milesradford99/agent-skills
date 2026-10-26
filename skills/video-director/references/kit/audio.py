@@ -224,6 +224,8 @@ def master(src: Path, dst: Path, lufs: float = -14.0, tp: float = -1.0) -> dict:
     norm = (f"loudnorm={target}:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
             f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
     chain = f"{pre},{norm}" if pre else norm
+    # Final safety: a 4x-oversampled limiter catches inter-sample peaks from sharp transients (clicks, scratches).
+    chain += f",aresample=192000,alimiter=limit={10 ** ((inner_tp - 0.3) / 20):.4f}:level=false:attack=0.5:release=50,aresample={RATE}"
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-af", chain, "-ar", str(RATE),
                     "-c:a", "pcm_s24le", str(dst)], check=True)
     return first

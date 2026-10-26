@@ -11,6 +11,8 @@ KIT = ROOT / "skills" / "video-director" / "references" / "kit"
 sys.path.insert(0, str(KIT))
 
 import audio  # noqa: E402
+import frames  # noqa: E402
+import music  # noqa: E402
 import qc  # noqa: E402
 import timeline  # noqa: E402
 
@@ -20,7 +22,7 @@ STARTER = json.loads((KIT / "starter" / "timeline.json").read_text(encoding="utf
 def tl(**overrides):
     base = {
         "meta": {"width": 1920, "height": 1080, "fps": 30, "duration": 10.0, "seed": "s"},
-        "audio": {"bpm": 120, "offset": 0.0},
+        "audio": {"bpm": 120, "offset": 0.0, "music": "audio/music.wav"},
         "shots": [{"id": "a", "start": 0, "end": 5}, {"id": "b", "start": 5, "end": 10}],
         "cues": [{"id": "hook", "t": 0.5, "kind": "hook"}],
     }
@@ -72,6 +74,20 @@ class TimelineTest(unittest.TestCase):
         _, warnings = timeline.check(tl(cues=cues))
         self.assertEqual(len(warnings), 3)  # late hook, signature outside 60-75%, short end hold
 
+    def test_missing_music_warns_unless_user_declined(self):
+        _, warnings = timeline.check(tl(audio={"bpm": 120}))
+        self.assertTrue(any("no music bed" in w for w in warnings))
+        _, warnings = timeline.check(tl(audio={"bpm": 120, "no_music": "user wants silence"}))
+        self.assertFalse(any("no music bed" in w for w in warnings))
+
+    def test_caption_reading_speed(self):
+        fast = [{"start": 1.0, "end": 2.0, "text": "下次医生劝你少做一项检查，他的建议跟收入无关。"}]
+        _, warnings = timeline.check(tl(captions=fast))
+        self.assertTrue(any("needs ~" in w for w in warnings))
+        ok = [{"start": 1.0, "end": 4.0, "text": "Start with a line."}]
+        _, warnings = timeline.check(tl(captions=ok))
+        self.assertFalse(any("needs ~" in w for w in warnings))
+
 
 class AudioTest(unittest.TestCase):
     def test_sfx_kinds_render_and_peak_safely(self):
@@ -111,6 +127,42 @@ class AudioTest(unittest.TestCase):
         spec = tl(cues=[], audio={"music": "audio/music.wav", "duck": [{"start": 2, "end": 4, "db": -9}]})
         graph = audio.build_mix(spec, Path("/p"))
         self.assertIn("volume=enable='between(t,2,4)':volume=-9dB", graph[graph.index("-filter_complex") + 1])
+
+
+class MusicTest(unittest.TestCase):
+    def test_derived_arc_rests_before_the_signature(self):
+        spec = tl(cues=[{"id": "hook", "t": 0.5, "kind": "hook"}, {"id": "sig", "t": 6.5, "kind": "signature"}])
+        sections = music.derive_sections(spec)
+        self.assertEqual(music.energy_at(sections, 0.1), 0)
+        self.assertEqual(music.energy_at(sections, 6.5 - 0.5), 0)  # the held beat before the payoff
+        self.assertEqual(music.energy_at(sections, 7.0), 3)
+        self.assertEqual(music.energy_at(sections, 9.9), 1)
+
+    def test_compose_fits_duration_with_headroom(self):
+        if music.np is None:
+            self.skipTest("numpy not installed")
+        spec = tl(cues=[{"id": "hook", "t": 0.5, "kind": "hook"}, {"id": "sig", "t": 6.5, "kind": "signature"}])
+        spec["meta"]["duration"] = 4.0
+        x = music.compose(spec, "warm")
+        self.assertEqual(x.shape, (2, 4 * music.RATE))
+        self.assertAlmostEqual(float(abs(x).max()), 10 ** (-6 / 20), places=3)
+
+
+class FramesTest(unittest.TestCase):
+    def test_sheet_density_scales_with_length(self):
+        self.assertEqual(frames.sheet_fps(10), 2.0)
+        self.assertEqual(frames.sheet_fps(222.3), 0.5)
+        self.assertEqual(frames.sheet_fps(3600), 0.25)
+
+    def test_bursts_are_capped_and_key_cues_come_first(self):
+        cues = [{"id": f"c{i}", "t": i * 1.0, "kind": "hit"} for i in range(178)]
+        cues += [{"id": "hook", "t": 0.4, "kind": "hook"}, {"id": "sig", "t": 114.7, "kind": "signature"}]
+        moments = frames.pick_moments({"cues": cues, "shots": []}, 10)
+        self.assertEqual(len(moments), 10)
+        names = [n for _, n in moments]
+        self.assertIn("hook", names)
+        self.assertIn("sig", names)
+        self.assertEqual(moments, sorted(moments))
 
 
 FFMPEG_LOG = """
@@ -153,6 +205,8 @@ class QcTest(unittest.TestCase):
         checks = {c["name"]: c for c in qc.evaluate(info, qc.parse_events(FFMPEG_LOG), spec)}
         self.assertTrue(checks["resolution"]["ok"] and checks["loudness"]["ok"] and checks["true peak"]["ok"])
         self.assertTrue(checks["no unplanned freeze"]["ok"])
+        self.assertEqual(checks["no unplanned freeze"]["level"], "warn")
+        self.assertEqual(checks["music bed"]["level"], "warn")
         self.assertFalse(checks["no unplanned black"]["ok"])
         self.assertFalse(checks["no unplanned silence"]["ok"])
 

@@ -23,6 +23,7 @@ import { once } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
+import os from 'node:os';
 
 const { values: o } = parseArgs({
   options: {
@@ -32,7 +33,8 @@ const { values: o } = parseArgs({
     at: { type: 'string' },
     scale: { type: 'string', default: '1' },
     step: { type: 'string', default: '1' },
-    workers: { type: 'string', default: '2' },
+    workers: { type: 'string', default: String(Math.max(1, Math.floor(os.cpus().length / 2))) },
+    png: { type: 'boolean', default: false },   // lossless PNG capture; default is JPEG q95, ~5x faster on textured pages
     crf: { type: 'string' },
     out: { type: 'string' },
     check: { type: 'boolean', default: false },
@@ -69,7 +71,7 @@ const sha = (...parts) => {
   for (const p of parts) h.update(typeof p === 'string' || Buffer.isBuffer(p) ? p : JSON.stringify(p));
   return h.digest('hex').slice(0, 16);
 };
-function hashTree(dir, skip = new Set()) {
+function hashTree(dir, skip = new Set(), only = null) {
   if (!fs.existsSync(dir)) return '';
   const h = createHash('sha256');
   const walk = d => {
@@ -77,6 +79,7 @@ function hashTree(dir, skip = new Set()) {
       if (d === dir && skip.has(name)) continue;
       const p = path.join(d, name);
       if (fs.statSync(p).isDirectory()) walk(p);
+      else if (only && !only.test(name)) continue;
       else h.update(path.relative(dir, p)).update(fs.readFileSync(p));
     }
   };
@@ -125,12 +128,15 @@ async function openPage() {
   page.__errors = errors;
   return page;
 }
-async function frameAt(page, T) {
+async function frameAt(page, T, video = false) {
   await page.evaluate(t => window.seek(t), T);
+  if (video && !o.png) return page.screenshot({ type: 'jpeg', quality: 95, animations: 'disabled', caret: 'hide' });
   return page.screenshot({ type: 'png', animations: 'disabled', caret: 'hide' });
 }
 function encoder(file, rate) {
-  const args = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(rate), '-c:v', 'png', '-i', '-',
+  // JPEG frames are full-range; convert to TV range so colours match the PNG path.
+  const args = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(rate), '-c:v', o.png ? 'png' : 'mjpeg', '-i', '-',
+    ...(o.png ? [] : ['-vf', 'scale=in_range=full:out_range=tv,format=yuv420p']),
     '-c:v', 'libx264', '-preset', preset, '-crf', crf, '-pix_fmt', 'yuv420p',
     '-color_primaries', 'bt709', '-color_trc', 'bt709', '-colorspace', 'bt709', '-r', String(rate), file];
   const proc = spawn('ffmpeg', args, { stdio: ['pipe', 'inherit', 'inherit'] });
@@ -198,7 +204,7 @@ async function run() {
     const file = o.out ? path.resolve(o.out) : path.join(renders, `range-${from}-${to}.mp4`);
     const page = await openPage();
     const enc = encoder(file, outFps);
-    for (const t of framesIn(from, to)) await enc.write(await frameAt(page, t));
+    for (const t of framesIn(from, to)) await enc.write(await frameAt(page, t, true));
     await enc.end();
     console.log(file);
     return;
@@ -212,7 +218,9 @@ async function run() {
   // Everything in the project that can draw pixels, except per-shot code and the timeline (keyed per segment below).
   const notPicture = new Set(['renders', 'media', 'review', 'audio', 'shots', 'node_modules', '.git', 'timeline.json',
     'spec.md', 'brief.md', 'progress.md', 'licenses.json', 'CREDITS.md']);
-  const shared = sha(hashTree(projectDir, notPicture), hashTree(libDir), tl.meta, { scale, step, crf, preset, chromeArgs });
+  // Only lib/ code a page can load counts; the Python and audio tools don't change pixels.
+  const shared = sha(hashTree(projectDir, notPicture), hashTree(libDir, new Set(['starter', 'starter-onetake']), /\.(m?js|css|glsl|json)$/), tl.meta,
+    { scale, step, crf, preset, chromeArgs, png: o.png });
   const segments = shots.map((s, i) => {
     const start = s.start;
     const end = i + 1 < shots.length ? shots[i + 1].start : duration;
@@ -240,7 +248,7 @@ async function run() {
       const enc = encoder(tmp, outFps);
       await page.evaluate(() => window.__cuesUsed?.clear());
       const t0 = Date.now();
-      for (const t of seg.frames) await enc.write(await frameAt(page, t));
+      for (const t of seg.frames) await enc.write(await frameAt(page, t, true));
       await enc.end();
       // Pages that don't record cue reads depend on every cue.
       const used = (await page.evaluate(() =>
