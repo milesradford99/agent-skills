@@ -11,6 +11,20 @@ one bar of near-silence before it, full on it, then resolving and ringing out at
 
 The score is a pad, a soft piano-like arpeggio, sub bass and light percussion, with a synthetic room.
 It's a dependable bed, not a film score: say so, and prefer the user's own licensed track when they have one.
+
+When the content itself is musical or rhythmic (a lesson on rhythm, a groove per genre, a heartbeat), add
+audio.grooves: windows where the soundtrack plays the content's own pattern instead of the bed.
+
+    "grooves": [{ "start": 30, "end": 76, "groove": "rock", "bpm": 120 },
+                { "start": 80, "end": 96, "lanes": { "kick": "x..x..x.", "hat": "xxxxxxxx" }, "per_beat": 2 }]
+
+A window names a preset from GROOVES or gives its own lanes (one character per step: x hit, X accent,
+. rest; | is ignored), plus optional bpm, per_beat (steps per beat), swing (0..0.5 of a step on off-steps),
+key, gain_db, and bed (0..1, how much of the bed stays under it; default 0). The bar is as long as the
+pattern, so 7 steps at per_beat 2 is a bar of 7/8. Every hit is written to audio/events.json
+({t, end, groove, window, lane, step, bar, accent}), and the page draws its on-screen instrument from that file,
+so picture and sound share one source.
+
 Writes 48 kHz stereo 24-bit WAV and sets nothing else; point audio.music at it and run audio.py mix.
 """
 
@@ -37,6 +51,31 @@ MOODS = {
     "tense": {"scale": "minor", "prog": [(0, True), (8, False), (3, False), (10, False)]},    # i VI III VII
 }
 KEYS = {"C": 48, "D": 50, "E": 52, "F": 53, "G": 55, "A": 57}
+
+# Textbook patterns, simplified to a few lanes; each is one bar. They're teaching approximations: say so on
+# screen if a viewer could take one for the only way the genre is played.
+GROOVES = {
+    "heartbeat": {"bpm": 70, "per_beat": 4, "lanes": {"kick": "Xx.."}},
+    "march": {"bpm": 112, "per_beat": 4, "lanes": {"kick": "X...x...", "snare": "x.xx..x.", "bass": "x...x...", "stab": "..x...x."}},
+    "waltz": {"bpm": 90, "per_beat": 2, "lanes": {"kick": "X.....", "bass": "X.....", "stab": "..x.x."}},
+    "rock": {"bpm": 120, "per_beat": 2, "lanes": {"kick": "X...x.x.", "snare": "..X...X.", "hat": "xxxxxxxx", "bass": "x.x.x.x."}},
+    "disco": {"bpm": 120, "per_beat": 4, "lanes": {"kick": "x...x...x...x...", "clap": "....X.......X...",
+                                                "hat": "x...x...x...x...", "ohat": "..x...x...x...x.", "bass": "x.x.x.x.x.x.x.x."}},
+    "funk": {"bpm": 100, "per_beat": 4, "lanes": {"kick": "X..x..x...x..x..", "snare": "....X..x.x..X...",
+                                               "hat": "xxxxxxxxxxxxxxxx", "bass": "x..x..x...x.x...", "stab": ".x....x..x....x."}},
+    "trap": {"bpm": 140, "per_beat": 4, "lanes": {"kick": "x......x..x.....", "clap": "........X.......",
+                                               "hat": "x.x.x.x.xxxxx.x.", "bass": "x......x..x....."}},
+    "reggae": {"bpm": 76, "per_beat": 4, "lanes": {"kick": "........X.......", "rim": "........x.......",
+                                                "hat": "x.x.x.x.x.x.x.x.", "stab": "..x...x...x...x.", "bass": "x.....x.x......."}},
+    "shuffle": {"bpm": 96, "per_beat": 2, "swing": 0.33, "lanes": {"kick": "x...x...", "snare": "..X...X.", "hat": "xxxxxxxx", "bass": "x.x.x.x."}},
+    "bossa": {"bpm": 130, "per_beat": 4, "lanes": {"kick": "x..xx..xx..xx..x", "rim": "x..x..x...x..x..",
+                                                "hat": "xxxxxxxxxxxxxxxx", "bass": "x.....x.x.....x."}},
+    "tresillo": {"bpm": 100, "per_beat": 2, "lanes": {"kick": "X..x..x.", "hat": "xxxxxxxx", "bass": "x..x..x."}},
+    "dembow": {"bpm": 96, "per_beat": 4, "lanes": {"kick": "x...x...x...x...", "snare": "...x..x....x..x.",
+                                                "hat": "x.x.x.x.x.x.x.x.", "bass": "x..x..x.x..x..x."}},
+    "seven-eight": {"bpm": 120, "per_beat": 2, "lanes": {"kick": "X.x.x..", "snare": "..x.x..", "hat": "xxxxxxx", "bass": "x.x.x.."}},
+}
+LANES = ("kick", "snare", "clap", "rim", "hat", "ohat", "bass", "stab")
 
 
 def midi_hz(n: float) -> float:
@@ -129,6 +168,38 @@ def hat(rnd) -> "np.ndarray":
     return np.vstack([s * 0.9, s])
 
 
+def snare(rnd) -> "np.ndarray":
+    n = int(0.22 * RATE)
+    t = np.arange(n) / RATE
+    noise = rnd.uniform(-1, 1, n)
+    s = noise * np.exp(-t * 22) * 0.7 + np.sin(2 * np.pi * 190 * t) * np.exp(-t * 30) * 0.6
+    return np.vstack([s, s])
+
+
+def clap(rnd) -> "np.ndarray":
+    n = int(0.25 * RATE)
+    t = np.arange(n) / RATE
+    noise = rnd.uniform(-1, 1, n)
+    noise = noise - np.convolve(noise, np.ones(4) / 4, mode="same")
+    env = sum(np.exp(-np.clip(t - d, 0, None) * 140) * (t >= d) for d in (0, 0.011, 0.022)) + np.exp(-t * 18) * (t >= 0.03)
+    s = noise * env * 0.6
+    return np.vstack([s * 0.95, s])
+
+
+def rim() -> "np.ndarray":
+    n = int(0.05 * RATE)
+    t = np.arange(n) / RATE
+    s = (np.sin(2 * np.pi * 1700 * t) + 0.5 * np.sin(2 * np.pi * 820 * t)) * np.exp(-t * 90)
+    return np.vstack([s, s])
+
+
+def open_hat(rnd) -> "np.ndarray":
+    n = int(0.3 * RATE)
+    noise = rnd.uniform(-1, 1, n)
+    s = (noise - np.convolve(noise, np.ones(6) / 6, mode="same")) * np.exp(-np.arange(n) / RATE * 11)
+    return np.vstack([s, s * 0.9])
+
+
 def room(x: "np.ndarray", rnd, seconds: float = 1.8, wet: float = 0.22) -> "np.ndarray":
     n = int(seconds * RATE)
     t = np.arange(n) / RATE
@@ -141,6 +212,121 @@ def room(x: "np.ndarray", rnd, seconds: float = 1.8, wet: float = 0.22) -> "np.n
         y = np.fft.irfft(np.fft.rfft(x[ch], size) * np.fft.rfft(ir, size), size)[: x.shape[1]]
         out[ch] = x[ch] * (1 - wet) + y * wet
     return out
+
+
+def _steps(pattern: str) -> str:
+    return pattern.replace("|", "").replace(" ", "")
+
+
+def resolve_grooves(tl: dict) -> list[dict]:
+    """Expand audio.grooves into full windows (preset merged with overrides). Raises ValueError on bad input."""
+    dur = float(tl["meta"]["duration"])
+    default_bpm = float(tl.get("audio", {}).get("bpm", 90))
+    out = []
+    for i, g in enumerate(tl.get("audio", {}).get("grooves", [])):
+        where = f"audio.grooves[{i}]"
+        name = g.get("groove")
+        if name is not None and name not in GROOVES:
+            raise ValueError(f"{where}: unknown groove '{name}' (known: {', '.join(GROOVES)})")
+        base = GROOVES.get(name, {})
+        lanes = {k: _steps(v) for k, v in (g.get("lanes") or base.get("lanes") or {}).items()}
+        if not lanes:
+            raise ValueError(f"{where}: needs a groove name or lanes")
+        for lane, pat in lanes.items():
+            if lane not in LANES:
+                raise ValueError(f"{where}: unknown lane '{lane}' (use {', '.join(LANES)})")
+            if set(pat) - set("xX.-"):
+                raise ValueError(f"{where}: lane '{lane}' may only use x, X, . or -")
+        lengths = {len(p) for p in lanes.values()}
+        if len(lengths) != 1 or 0 in lengths:
+            raise ValueError(f"{where}: every lane needs the same, non-zero number of steps")
+        start, end = float(g.get("start", 0)), float(g.get("end", dur))
+        if not 0 <= start < end <= dur + 1e-9:
+            raise ValueError(f"{where}: needs 0 <= start < end <= duration")
+        swing = float(g.get("swing", base.get("swing", 0.0)))
+        if not 0 <= swing <= 0.5:
+            raise ValueError(f"{where}: swing must be 0..0.5")
+        out.append({
+            "start": start, "end": end, "name": name or f"custom-{i}", "lanes": lanes,
+            "steps": lengths.pop(), "bpm": float(g.get("bpm", base.get("bpm", default_bpm))),
+            "per_beat": int(g.get("per_beat", base.get("per_beat", 4))), "swing": swing,
+            "key": g.get("key"), "gain_db": float(g.get("gain_db", 0.0)), "bed": float(g.get("bed", 0.0)),
+        })
+    out.sort(key=lambda w: w["start"])
+    for a, b in zip(out, out[1:]):
+        if b["start"] < a["end"] - 1e-9:
+            raise ValueError(f"grooves '{a['name']}' and '{b['name']}' overlap")
+    return out
+
+
+def groove_events(tl: dict) -> list[dict]:
+    """Every hit of every groove window, in time order: the one source for both the audio and the picture."""
+    events = []
+    for wi, w in enumerate(resolve_grooves(tl)):
+        step = 60.0 / w["bpm"] / w["per_beat"]
+        bar_len = step * w["steps"]
+        bar = 0
+        while w["start"] + bar * bar_len < w["end"] - 1e-9:
+            t0 = w["start"] + bar * bar_len
+            for k in range(w["steps"]):
+                t = t0 + k * step + (w["swing"] * step if k % 2 else 0.0)
+                if t >= w["end"] - 1e-9:
+                    continue
+                for lane, pat in w["lanes"].items():
+                    if pat[k] in "xX":
+                        events.append({"t": round(t, 6), "end": round(min(t + step, w["end"]), 6), "groove": w["name"],
+                                       "window": wi, "lane": lane, "step": k, "bar": bar, "accent": pat[k] == "X"})
+            bar += 1
+    events.sort(key=lambda e: (e["t"], LANES.index(e["lane"])))
+    return events
+
+
+GAINS = {"kick": 0.5, "snare": 0.3, "clap": 0.28, "rim": 0.18, "hat": 0.07, "ohat": 0.08, "bass": 0.22, "stab": 0.1}
+
+
+def render_grooves(tl: dict, spec: dict, tonic: int, rnd, length: int) -> "np.ndarray":
+    buf = np.zeros((2, length))
+    windows = resolve_grooves(tl)
+    for e in groove_events(tl):
+        w = windows[e["window"]]
+        key = KEYS.get(str(w["key"]).upper(), tonic) if w["key"] else tonic
+        bars_per_chord = max(1, round(4 * w["per_beat"] / w["steps"]))  # short bars (1 beat, 2/4) hold a chord longer
+        root, minor = spec["prog"][(e["bar"] // bars_per_chord) % len(spec["prog"])]
+        r = key + root
+        dur = e["end"] - e["t"]
+        lane = e["lane"]
+        if lane == "kick":
+            sig = kick()
+        elif lane == "snare":
+            sig = snare(rnd)
+        elif lane == "clap":
+            sig = clap(rnd)
+        elif lane == "rim":
+            sig = rim()
+        elif lane == "hat":
+            sig = hat(rnd)
+        elif lane == "ohat":
+            sig = open_hat(rnd)
+        elif lane == "bass":
+            sig = bass(midi_hz(r - 12), max(dur * 1.6, 0.12))
+        else:
+            sig = sum(pluck(midi_hz(n + 12), max(dur * 2, 0.15)) for n in (r, r + (3 if minor else 4), r + 7)) / 2
+        g = GAINS[lane] * (1.35 if e["accent"] else 1.0) * 10 ** (w["gain_db"] / 20)
+        _add(buf, e["t"], sig * g)
+    return buf
+
+
+def bed_mask(tl: dict, length: int) -> "np.ndarray":
+    """1 where the bed plays, each window's `bed` level inside groove windows, with 60 ms ramps."""
+    mask = np.ones(length)
+    ramp = int(0.06 * RATE)
+    for w in resolve_grooves(tl):
+        i, j = int(w["start"] * RATE), min(length, int(w["end"] * RATE))
+        mask[i:j] = w["bed"]
+        for a, b, lo, hi in ((max(0, i - ramp), i, 1.0, w["bed"]), (j, min(length, j + ramp), w["bed"], 1.0)):
+            if b > a:
+                mask[a:b] = np.minimum(mask[a:b], np.linspace(lo, hi, b - a))
+    return mask
 
 
 def compose(tl: dict, mood: str = "warm", seed: int = 1) -> "np.ndarray":
@@ -191,6 +377,9 @@ def compose(tl: dict, mood: str = "warm", seed: int = 1) -> "np.ndarray":
             _add(buf, t0, bass(midi_hz(r - 12), min(length, 4.0)) * 0.25)
 
     buf = room(buf, rnd)
+    if audio.get("grooves"):
+        buf *= bed_mask(tl, buf.shape[1])
+        buf += room(render_grooves(tl, spec, tonic, rnd, buf.shape[1]), rnd, seconds=0.8, wet=0.1)
     buf = buf[:, : int(dur * RATE)]
     fade = int(min(2.0, dur / 4) * RATE)
     buf[:, -fade:] *= np.linspace(1, 0, fade) ** 1.5
@@ -215,11 +404,22 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--out", default="audio/music.wav", help="relative to the project folder")
     ap.add_argument("--mood", default="warm", choices=sorted(MOODS))
     ap.add_argument("--seed", type=int, default=1)
+    ap.add_argument("--events", default="audio/events.json", help="where groove hits are written, relative to the project")
     args = ap.parse_args(argv)
     path = Path(args.timeline)
     tl = json.loads(path.read_text(encoding="utf-8"))
     out = path.parent / args.out
+    try:
+        events = groove_events(tl)
+    except ValueError as e:
+        print(f"music.py: {e}", file=sys.stderr)
+        return 1
     write_wav(out, compose(tl, args.mood, args.seed))
+    if events:
+        ev = path.parent / args.events
+        ev.parent.mkdir(parents=True, exist_ok=True)
+        ev.write_text(json.dumps(events, separators=(",", ":")), encoding="utf-8")
+        print(f"{ev} ({len(events)} hits); draw the on-screen instrument from it")
     print(f"{out} ({tl['meta']['duration']:g}s, {tl.get('audio', {}).get('mood', args.mood)}, "
           f"{tl.get('audio', {}).get('bpm', 90):g} bpm); set audio.music to \"{args.out}\" and run audio.py mix")
     return 0

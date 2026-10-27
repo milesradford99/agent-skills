@@ -24,6 +24,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
     - New `frames.py tile` and `pair` subcommands.
   - Preflight checks the login shell's PATH before reinstalling tools.
   - Directions are five sets of 3 keyframes (hook, key moment, end), not three 10-second demo videos. One is led by the references, two come from random draws, one is a deliberate extreme and one is a best-in-class conventional take. A 10-second motion test is rendered only for the chosen direction, and only when its appeal depends on motion.
+- `video-director` 0.2.0, after analysing a code-made rhythm lesson (9½ min, synthesized grooves locked to an on-screen beat ruler):
+  - A Lesson format for chaptered explainers (3–10 min): a cold open, chapters that each add one concept, teaching pages that alternate with full examples, and a persistent on-screen instrument drawn from data.
+  - `music.py` plays the content's own patterns: `audio.grooves` windows with 13 presets (heartbeat, march, waltz, rock, disco, funk, trap, reggae, shuffle, bossa, tresillo, dembow, 7/8) or custom step lanes, with swing and per-window tempo. Every hit is written to `audio/events.json` so the picture draws from the same data. The bed drops out under each window.
+  - A fact check before the audience pass for anything that explains or teaches: a fresh agent rates every claim ok, overstated, unsupported or wrong, and the gate allows no wrong or unsupported line on screen.
+  - `timeline.py check` validates grooves and the new optional `chapters` table.
 - Skills may carry an optional `references/` folder; the validator checks that every `references/...` path a SKILL.md mentions exists.
 - Claude Code plugin marketplace (`milesradford-skills`) with one plugin per skill.
 - Skill validator, tests and CI.

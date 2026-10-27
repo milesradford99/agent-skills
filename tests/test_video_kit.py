@@ -147,6 +147,59 @@ class MusicTest(unittest.TestCase):
         self.assertEqual(x.shape, (2, 4 * music.RATE))
         self.assertAlmostEqual(float(abs(x).max()), 10 ** (-6 / 20), places=3)
 
+    def test_every_groove_preset_resolves(self):
+        for name in music.GROOVES:
+            spec = tl(audio={"bpm": 120, "grooves": [{"start": 0, "end": 4, "groove": name}]})
+            self.assertTrue(music.groove_events(spec), name)
+
+    def test_groove_events_sit_on_the_pattern_grid(self):
+        spec = tl(audio={"grooves": [{"start": 2, "end": 4, "groove": "rock", "bpm": 120}]})
+        kicks = [e["t"] for e in music.groove_events(spec) if e["lane"] == "kick"]
+        # rock kick "X...x.x." in eighths at 120 bpm: 0, 1.0, 1.5 s into each 2 s bar
+        self.assertEqual(kicks, [2.0, 3.0, 3.5])
+        self.assertTrue(all(2 <= e["t"] < 4 for e in music.groove_events(spec)))
+
+    def test_custom_lanes_set_the_bar_length_and_swing(self):
+        spec = tl(audio={"grooves": [{"start": 0, "end": 3.5, "bpm": 120, "per_beat": 2,
+                                      "lanes": {"kick": "X.x.x..", "hat": "xx|xxxxx"}, "swing": 0.5}]})
+        events = music.groove_events(spec)
+        bars = {e["bar"] for e in events}
+        self.assertEqual(bars, {0, 1})  # 7 eighths at 120 bpm = 1.75 s per bar
+        hats = [e["t"] for e in events if e["lane"] == "hat" and e["bar"] == 0]
+        self.assertAlmostEqual(hats[1], 0.25 + 0.125)  # off-step pushed half a step late
+        self.assertTrue(events[0]["accent"])
+
+    def test_bad_grooves_are_reported_by_timeline_check(self):
+        cases = [
+            [{"start": 0, "end": 4, "groove": "polka"}],
+            [{"start": 0, "end": 4, "lanes": {"kick": "x...", "hat": "xxx"}}],
+            [{"start": 0, "end": 4, "lanes": {"cowbell": "x..."}}],
+            [{"start": 0, "end": 5, "groove": "rock"}, {"start": 4, "end": 8, "groove": "funk"}],
+            [{"start": 8, "end": 12, "groove": "rock"}],
+        ]
+        for grooves in cases:
+            errors, _ = timeline.check(tl(audio={"bpm": 120, "music": "m.wav", "grooves": grooves}))
+            self.assertEqual(len(errors), 1, grooves)
+        errors, _ = timeline.check(tl(audio={"bpm": 120, "music": "m.wav", "grooves": [{"start": 0, "end": 4, "groove": "waltz"}]}))
+        self.assertEqual(errors, [])
+
+    def test_chapters_must_be_sorted_and_inside_the_runtime(self):
+        ok = [{"id": "01", "start": 0}, {"id": "02", "start": 4}]
+        self.assertEqual(timeline.check(tl(chapters=ok))[0], [])
+        self.assertEqual(len(timeline.check(tl(chapters=ok[::-1]))[0]), 1)
+        self.assertEqual(len(timeline.check(tl(chapters=[{"id": "01", "start": 12}]))[0]), 1)
+
+    def test_compose_with_grooves_mutes_the_bed_inside_windows(self):
+        if music.np is None:
+            self.skipTest("numpy not installed")
+        spec = tl(cues=[], audio={"bpm": 120, "grooves": [{"start": 1, "end": 3, "groove": "heartbeat"}]})
+        spec["meta"]["duration"] = 4.0
+        x = music.compose(spec, "warm")
+        self.assertEqual(x.shape, (2, 4 * music.RATE))
+        mask = music.bed_mask(spec, 4 * music.RATE)
+        self.assertEqual(mask[2 * music.RATE], 0.0)
+        self.assertEqual(mask[int(3.5 * music.RATE)], 1.0)
+
 
 class FramesTest(unittest.TestCase):
     def test_sheet_density_scales_with_length(self):

@@ -26,6 +26,8 @@ What the video *says*, on one screen, in the final language. The user approves i
 
 Keep it to what the user needs to judge content; craft details belong in the spec below.
 
+For a **lesson**, the beat table becomes a chapter table (number, the one concept, the teaching-page line, the world example, the seconds), and the card adds two lines: **Instrument:** what stays on screen throughout and how each chapter adds to it; **Fact check:** the verdict counts from `review.md` and any simplification the user approved.
+
 
 The spec turns the chosen direction into a brief the producer can check against frames, and the reviewer can score against. Write it to `video/<slug>/spec.md`. Every requirement is a number, a time or a named thing; "feels premium" can't be checked against a frame, "titles snap in 10 frames on `cubic-bezier(.7,0,.2,1)`" can.
 
@@ -143,6 +145,10 @@ Rules, all checked by `timeline.py check`:
 - `qc_allow` lists intentional black, frozen or silent stretches so QC doesn't flag them.
 
 `captions` (optional) holds on-screen words with times: `[{ "start": 0.5, "end": 1.9, "text": "Start with a line." }]`. Keep each line's start on a cue or beat so words and sound land together. Density: at most 3 live lines on screen, older lines dimmed or cleared, at least 44 px at 1080p, and on screen long enough to read (`timeline.py check` warns above about 9 CJK or 17 Latin characters per second).
+
+`audio.grooves` (optional) holds windows where the soundtrack plays the content's own pattern instead of the bed: `[{ "start": 30, "end": 76, "groove": "rock", "bpm": 120 }, { "start": 80, "end": 96, "lanes": { "kick": "X.x.x..", "hat": "xxxxxxx" }, "per_beat": 2 }]`. Presets and lane names are listed in `music.py`; windows may not overlap, and `timeline.py check` validates them. `music.py` writes every hit to `audio/events.json` as `{t, end, groove, window, lane, step, bar, accent}`; the page fetches it before setting `__ready` and draws from it, never from its own copy of the pattern.
+
+`chapters` (optional, for lessons) is page data: `[{ "id": "01", "title": "Tempo", "start": 18.0 }, ...]`, sorted, starting within the runtime. The page shows the current chapter number from it, and retiming a chapter is a data edit.
 
 `audio.sections` (optional) sets the score's energy, 0 (rest) to 3 (full); without it `music.py` derives an arc from the hook and signature cues. `audio.no_music` holds the user's reason when they don't want music; `timeline.py check` warns when neither it nor `audio.music` is set.
 

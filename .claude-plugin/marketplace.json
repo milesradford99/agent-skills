@@ -33,7 +33,7 @@
       "source": "./",
       "strict": false,
       "description": "Turns loose inspiration into a finished video. It locks the format, asks at most 3 questions, shows five keyframe directions and a story card, builds the video as code that is cheap to revise, and runs a blind reviewer loop.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
       "category": "media",
       "tags": ["video", "motion-graphics", "animation", "ffmpeg", "music"],

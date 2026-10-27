@@ -17,6 +17,11 @@ import re
 import sys
 from pathlib import Path
 
+try:  # music.py sits beside this file; it validates audio.grooves without needing numpy
+    import music
+except ImportError:  # pragma: no cover
+    music = None
+
 ID_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 CJK_RE = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]")
 # Comfortable reading speed for captions (subtitle-style guidance, approximate): CJK characters or Latin
@@ -122,6 +127,19 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
         rate = cjk / MAX_CPS_CJK + latin / MAX_CPS_LATIN  # seconds needed to read it
         if rate > (end - start) + 1e-9:
             warnings.append(f"caption {i} at {start:g}s needs ~{rate:.1f}s to read but is on for {end - start:.1f}s")
+
+    chapters = tl.get("chapters", [])
+    starts = [c.get("start") for c in chapters]
+    if any(t is None or not 0 <= t < duration for t in starts):
+        errors.append(f"every chapter needs a start inside 0..{duration:g}s")
+    elif starts != sorted(starts):
+        errors.append("chapters must be sorted by start")
+
+    if audio.get("grooves") and music is not None:
+        try:
+            music.resolve_grooves(tl)
+        except ValueError as e:
+            errors.append(str(e))
 
     if not audio.get("music") and not audio.get("no_music"):
         warnings.append("no music bed: set audio.music (lib/music.py composes one), "

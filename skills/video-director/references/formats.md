@@ -13,11 +13,12 @@ Every generated form below defaults to continuous composition (beats that transf
 | The user's own clips or photos | Montage, social reel, trailer |
 | Screenshots or a product URL | Product promo, motion graphics, explainer |
 | A script, article or topic | Explainer, motion graphics, data story |
+| A whole subject to teach, or "explain X from zero" | Lesson, explainer, data story |
 | Numbers, a CSV or a chart | Data story, explainer, motion graphics |
 | A story premise or characters | Animated short, 3D piece, trailer |
 | A reference video | The reference's own form first, then its two nearest neighbours |
 
-## The 12 forms
+## The 13 forms
 
 ### Motion graphics / kinetic type
 - **For users:** "Designed shapes, type and icons, animated."
@@ -34,6 +35,17 @@ Every generated form below defaults to continuous composition (beats that transf
 - **Default spec:** 16:9, 30 fps, 45–90 s; words as kinetic captions, no voice.
 - **Toolchain:** one `seek(t)` page with a continuous camera over a single evolving diagram or world, or Manim for math.
 - **Extra question:** "What's the one thing a viewer should understand by the end?"
+
+### Lesson (chaptered explainer)
+- **For users:** "A whole topic taught from zero in short chapters, 3–10 minutes, each idea shown and heard rather than told."
+- **Needs:** the subject and who it's for; the user's own expertise or trusted sources, because every claim is checked (`review.md`, fact check).
+- **Arc:** a cold open that is the simplest instance of the idea (a heartbeat for rhythm, one coin flip for probability) → 5–8 chapters, each adding one concept on top of the last and ending on a concrete example the viewer can see or hear → a recap that shows the range covered → a callback to the opening, changed.
+- **Two registers.** A quiet "teaching page" (one idea, one line of text, one diagram) alternates with a full "world" example of the same idea (a genre scene, a simulation, a real case). The page explains; the world proves it. The instrument below carries across every switch, so the piece stays continuous even where the picture above it cuts.
+- **A persistent instrument.** One on-screen device stays for the whole piece and grows with each chapter: a beat ruler with lanes, a number line, a running ledger, a map. It's drawn from data, ideally the same data the sound uses (`audio.grooves` and `audio/events.json`), so what's seen and heard can't drift apart. The chapter number and the instrument together tell the viewer where they are.
+- **When the subject is computable, the example is generated, not illustrated.** Rhythm plays the actual groove, probability runs the actual trials, physics runs the actual simulation. This is the form's main advantage over stock footage; subjects that need real photos, footage or people are a weaker fit, and say so on the brief card.
+- **Default spec:** 16:9, 30 fps, 3–10 min, words on screen and no voice; chapter numbers visible; each chapter 30–90 s.
+- **Toolchain:** one `seek(t)` page with a chapter table in `timeline.json`; the shot runtime suits it when worlds are separable scenes. The rough cut (phase 4) is required.
+- **Extra question:** "Who is it for, and what should they be able to do or hear afterwards?"
 
 ### Product promo / demo
 - **For users:** "Your real product screens, with zooms, callouts and a payoff."

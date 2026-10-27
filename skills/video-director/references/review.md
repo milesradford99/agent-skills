@@ -1,10 +1,33 @@
 # Review
 
-Agents grade their own work too generously, and a reviewer that has seen the producer's reasoning grades the intent, not the screen. Craft is also not value: a beautifully made video can still be dull, confusing or preachy for the person it's for. So review has three parts, each with a fresh agent that sees only the output and its criteria:
+Agents grade their own work too generously, and a reviewer that has seen the producer's reasoning grades the intent, not the screen. Craft is also not value: a beautifully made video can still be dull, confusing or preachy for the person it's for. So review has these parts, each with a fresh agent that sees only the output and its criteria:
 
+0. **The fact check** asks "is every claim true, and is it stated no more strongly than the source allows?" It runs on the script for anything that explains or teaches, before the audience pass.
 1. **The audience pass** asks "is this worth watching, for the viewer it's for?" It runs on the script (phase 2, text only) and on the rough cut (phase 4).
 2. **Measured QC** catches technical faults.
 3. **The craft reviewer** scores how well it's made (phase 5).
+
+## The fact check
+
+A viewer forgives a plain frame, not a wrong fact, and a lesson repeats its mistakes to everyone who learns from it. Models state plausible half-truths fluently, so the producer can't check its own script.
+
+A fresh subagent gets only the story card, the on-screen lines and `sources.md`. It lists every checkable claim (definitions, numbers, dates, attributions, "X is how Y works", genre or field conventions, and anything a demo *shows* as fact, such as which beats a groove accents) and gives each one a verdict:
+- **OK:** a source in `sources.md`, or a textbook fact it can cite, supports it as worded.
+- **Overstated:** true in a narrower form ("reggaeton uses dembow" rather than "reggaeton is 3+3+2"); it proposes the narrower line.
+- **Unsupported** or **wrong:** it says what it would need, or what's true instead.
+
+Use web search when it's available and cite what it found; without it, the subagent marks what it can't verify rather than guessing. **Gate:** no `wrong`, no `unsupported` claim left on screen, and every `overstated` line either narrowed or approved by the user as a deliberate simplification ("a teaching approximation", said once on screen if a viewer could be misled). Record the verdicts in `sources.md`. For a lesson in a field where errors cause harm (health, law, money), tell the user the check is no substitute for an expert's read, and offer the claim list for one.
+
+Prompt template:
+
+```text
+You will read the script of a short teaching video: its on-screen lines and a sources file. You didn't write it.
+<paths>
+List every claim a careful expert could check, including what the demos present as fact. For each: the line,
+the verdict (ok / overstated / unsupported / wrong), the source or reason, and for anything not ok the
+corrected or narrowed line. Search the web if you can and cite URLs; otherwise say what you couldn't verify.
+Reply as a table, then the 3 claims most likely to draw a correcting comment.
+```
 
 ## The audience pass
 
