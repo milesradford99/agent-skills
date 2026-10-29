@@ -29,6 +29,7 @@ Start a project from the chosen direction's keyframe page. For a blank start, `l
 
 ```sh
 ffmpeg -hide_banner -version | head -1
+test -n "$FREESOUND_API_KEY" -o -s .freesound-key && echo freesound key ok   # recorded SFX; else audio.py sfx
 ffmpeg -hide_banner -encoders | grep -E 'libx264|aac'
 ffmpeg -hide_banner -filters | grep -E ' (drawtext|loudnorm|ebur128|blackdetect|freezedetect|showspectrumpic) '
 node --version                     # 22+
@@ -68,7 +69,10 @@ node lib/render.mjs --project <slug> --check                 # after changing ho
 node lib/render.mjs --project <slug> --at 0.4,6.5,9.5        # key stills only
 node lib/render.mjs --project <slug> --scale 0.5 --step 2    # fast motion preview
 node lib/render.mjs --project <slug> --from 6 --to 7.5       # one moment
-python3 lib/audio.py sfx impact <slug>/audio/sfx/impact.wav  # whoosh, riser, impact, click, subdrop
+python3 lib/sfx.py search "cork pop" --max-dur 1          # recorded SFX, ranked by downloads and votes
+python3 lib/sfx.py get <slug>/audio/sfx fs:123 fs:456        # WAV in audio/sfx/, logged in licenses.json
+python3 lib/sfx.py measure <slug>/audio/sfx/*.wav            # length, transient, ring, energy band
+python3 lib/audio.py sfx subdrop <slug>/audio/sfx/sub.wav    # synthesized: whoosh, riser, impact, click, subdrop
 python3 lib/music.py <slug>/timeline.json                    # compose the score from the cues (needs numpy)
 python3 lib/audio.py mix <slug>/timeline.json                # cues + music + ducking, mastered to audio.out
 node lib/render.mjs --project <slug>                         # full render, picture cached per segment, audio muxed
@@ -116,7 +120,9 @@ Revisions are edits to `cuts.json` and cue times, re-rendered by ffmpeg in secon
 ## Audio route
 
 - **Music, by default.** Use the user's own or licensed track if they have one. Otherwise `lib/music.py` composes a bed in seconds from `audio.bpm`, `audio.mood` and the cues (or `audio.sections`): pad, soft arpeggio, sub bass and light percussion in a synthetic room, with a held beat of near-silence before the signature cue. It's dependable, not a film score. When the subject is itself rhythm or sound, set `audio.grooves` instead of hoping a bed fits: each window plays a preset or custom step pattern, the bed drops out under it, and `audio/events.json` lists every hit for the page to draw (lanes, playhead, the active step). For a richer score, write notes with `pretty_midi` following the same sections and render them through FluidSynth or sfizz with CC0 or attributed samples (VSCO-2 CE, Salamander piano), then `pedalboard`; sampled piano holds up, sampled strings and choir stay demo-quality. Set `audio.music`, keep `music_gain_db` around −4 to −8 so captions' SFX sit on top, and run `audio.py mix`.
-- **SFX.** `audio.py sfx` covers whooshes, risers, impacts, clicks and sub drops. The mixer aligns each sound's transient, not its file start, to the cue time.
+- **SFX, recorded first.** `sfx.py search` queries Freesound and re-ranks several relevance pages by downloads, showing votes, license and the uploader's description; pick on that evidence, then `sfx.py measure` the candidates before placing them. `sfx.py get` downloads the HQ previews in parallel (Freesound caps each connection at about 80 KB/s, so put every key in one call), converts them to 48 kHz WAV and logs source, license and credit in `licenses.json`. `audio.py sfx` synthesizes whooshes, risers, impacts, clicks and sub drops: a fallback without a key, and a layer under a recorded hit. The mixer aligns each layer's transient, not its file start, to the cue time, and a layer's `len` trims and fades a long ring:
+  `{ "id": "signature", "t": 6.5, "sfx": [ "audio/sfx/fs2-cork-pop.wav", { "path": "audio/sfx/sub.wav", "gain_db": -6, "len": 0.8 } ], "gain_db": -2 }`
+- **Freesound fails?** A 401 is a bad key; a 429 is throttling (wait a minute); timeouts are the network, so retry or route through the user's proxy (`https_proxy`). Never stall: synthesize and note the cue for a later swap.
 - **Words.** Default to on-screen type and captions (`captions` in `timeline.json`), timed to cues. Voiceover only when the user asks: their own recording, or Kokoro (local, Apache-2.0); add a `duck` range under each line, and keep captions on.
 - **Generated music or voice from a paid API** is spend: estimate and ask first.
 - **Delivery.** `audio.py mix` masters to the timeline's `lufs` and `true_peak` (default −14 LUFS, −1 dBTP for web) with two-pass loudnorm, a final 4×-oversampled limiter for sharp transients, and 48 kHz output. Keep the platform's target; a soundtrack too thin to reach it needs music, not a lower target.
@@ -131,6 +137,7 @@ When a direction needs imagery code can't draw, generate it once (on the user's 
 [
   { "path": "audio/music.wav", "source": "composed in audio/score.py", "license": "original", "attribution": null },
   { "path": "assets/fonts/Fraunces.woff2", "source": "Google Fonts", "license": "OFL-1.1", "attribution": null },
+  { "path": "audio/sfx/fs2-cork-pop.wav", "source": "https://freesound.org/s/2/", "license": "CC-BY-4.0", "attribution": "\"Cork pop\" by someone (https://freesound.org/s/2/), CC-BY-4.0" },
   { "path": "media/raw/trailer-01.mp4", "source": "https://…", "license": "user-provided, rights not verified", "attribution": "© Publisher" },
   { "path": "assets/plates/sky.png", "source": "generated", "license": "per provider terms", "model": "…", "prompt": "…", "seed": 7, "date": "2026-10-25" }
 ]

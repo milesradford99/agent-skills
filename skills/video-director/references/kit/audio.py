@@ -8,8 +8,9 @@
                                                             audio.lufs / audio.true_peak into audio.out
     python3 lib/audio.py master in.wav out.wav [--lufs -14] [--tp -1]   two-pass loudnorm, 48 kHz
 
-SFX are 48 kHz mono 24-bit WAV. Recipes are deliberately simple; layer and EQ them in the mix,
-or replace them with recorded CC0 sounds (log those in licenses.json).
+SFX are 48 kHz mono 24-bit WAV. The recipes are a fallback and a layer (a sub under a recorded hit);
+prefer recorded sounds from sfx.py, which logs them in licenses.json. A cue's sfx can be one path or a
+list of layers, each {path, gain_db, len}; every layer's transient lands on the cue.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import random
 import re
 import subprocess
 import sys
+import tempfile
 import wave
 from array import array
 from pathlib import Path
@@ -147,6 +149,33 @@ def sfx(kind: str, dur: float | None = None, seed: int = 1, pitch: float = 1.0) 
 
 # ---------- mix ----------
 
+def sfx_layers(cue: dict) -> list[dict]:
+    """A cue's sfx is a path, or a list of paths or {path, gain_db, len} layers that all land on the cue
+    (a recorded transient over a synthesized sub, say)."""
+    raw = cue.get("sfx")
+    if not raw:
+        return []
+    return [x if isinstance(x, dict) else {"path": x} for x in (raw if isinstance(raw, list) else [raw])]
+
+
+def file_transient(path: Path) -> float:
+    """Transient time of any audio file; non-WAV and float WAV files are decoded with ffmpeg first."""
+    if not path.is_file():
+        return 0.0
+    try:
+        samples, rate = read_wav_mono(path)
+    except (ValueError, OSError, EOFError, wave.Error):
+        with tempfile.TemporaryDirectory() as tmp:
+            wav = Path(tmp) / "x.wav"
+            try:
+                subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(path), "-ac", "1", "-c:a", "pcm_s24le",
+                                str(wav)], check=True)
+            except (OSError, subprocess.CalledProcessError):
+                return 0.0
+            samples, rate = read_wav_mono(wav)
+    return transient_time(samples, rate)
+
+
 def build_mix(tl: dict, project_dir: Path) -> list[str]:
     """Return the ffmpeg argument list that renders the unmastered mix next to audio.out (as *.raw.wav)."""
     audio = tl.get("audio", {})
@@ -168,20 +197,18 @@ def build_mix(tl: dict, project_dir: Path) -> list[str]:
         labels.append("[m]")
 
     for c in tl.get("cues", []):
-        if not c.get("sfx"):
-            continue
-        path = project_dir / c["sfx"]
-        lead = 0.0
-        if path.suffix.lower() == ".wav" and path.is_file():
-            samples, rate = read_wav_mono(path)
-            lead = transient_time(samples, rate)
-        start = max(0.0, c["t"] - lead)
-        idx = len(inputs) // 2
-        inputs += ["-i", str(path)]
-        label = f"[s{idx}]"
-        chains.append(f"[{idx}:a]aresample={RATE},aformat=channel_layouts=stereo,"
-                      f"volume={c.get('gain_db', 0)}dB,adelay={round(start * 1000)}:all=1{label}")
-        labels.append(label)
+        for layer in sfx_layers(c):
+            path = project_dir / layer["path"]
+            start = max(0.0, c["t"] - file_transient(path))
+            idx = len(inputs) // 2
+            inputs += ["-i", str(path)]
+            label = f"[s{idx}]"
+            # a layer's length caps a long ring (fade over the last 20%), so a tap stays a tap
+            cut = (f",atrim=0:{layer['len']},afade=t=out:st={layer['len'] * 0.8:.3f}:d={layer['len'] * 0.2:.3f}"
+                   if layer.get("len") else "")
+            chains.append(f"[{idx}:a]aresample={RATE},aformat=channel_layouts=stereo{cut},"
+                          f"volume={c.get('gain_db', 0) + layer.get('gain_db', 0)}dB,adelay={round(start * 1000)}:all=1{label}")
+            labels.append(label)
 
     if not labels:
         raise ValueError("nothing to mix: set audio.music or give cues an sfx")

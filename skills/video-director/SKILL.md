@@ -28,7 +28,7 @@ What this adds over a capable agent with no skill:
 
 **The user decides:** the format (picked from options), purpose and audience, platform and rough length, must-say content, **what the video says** (by approving the story card), the source and rights of footage and music, a voiceover only if they want one, no music only if they want none, the direction (by reacting to demos), spend, and the final approval. Their taste overrides this skill's defaults, including its avoid lists.
 
-**You decide, then report in one line:** toolchain, resolution and fps within the platform's spec, codecs, easing, type pairing inside the chosen direction, transitions, sound design, mix and loudness, file and folder layout, render strategy, and every craft decision the reviewer scores.
+**You decide, then report in one line:** toolchain, resolution and fps within the platform's spec, codecs, easing, type pairing inside the chosen direction, transitions, sound design and which recorded effects to use, mix and loudness, file and folder layout, render strategy, and every craft decision the reviewer scores.
 
 Ask with the structured question tool if there is one, otherwise as numbered options with the recommendation first. Every question offers "pick for me". Record answers and taste reactions in `video/preferences.md` so the next video starts from them and nothing is asked twice.
 
@@ -52,6 +52,18 @@ Every piece has a music bed unless the user says otherwise. Silence is a tool fo
 - **When the subject is sound or rhythm, the example is the soundtrack.** Put the content's own patterns in `audio.grooves` (presets such as `rock`, `funk`, `trap`, `dembow`, `seven-eight`, or custom lanes); `music.py` plays them in those windows instead of the bed and writes every hit to `audio/events.json`, which the page reads to draw what's heard. Never hand-place visuals that are meant to match a groove.
 - Mix and master to the platform target (−14 LUFS, −1 dBTP for web). Never lower the target to make a thin soundtrack pass QC.
 
+## Sound effects: recorded, chosen by evidence
+
+You can't hear, so left alone you synthesize effects and judge them by their math; they come out thin and obviously fake. Prefer real recordings from Freesound (`lib/sfx.py`), picked the way a listener would, from what the people who did hear them left behind:
+- **Search plain English nouns for the source** ("cork pop", "paper slide", "camera shutter"), with `--max-dur` near the cue's length. Results are relevance pages re-ranked by downloads.
+- **Rank on evidence and quote it** when you pick: downloads first, and the number of ratings over their average (★4.4(380) beats ★4.9(6)).
+- **Read the description as listening.** A named recorder and a clear source ("cork from a wine bottle, Zoom H5") mean you know what you'll get; "made with my mouth" or "phone mic" is lo-fi. Reject a clip whose source isn't the cue's, however popular.
+- **Measure before trusting a hit** (`sfx.py measure`): length, transient, how long it rings, where the energy sits. A popular "thud" can be a 3 s cinematic rumble. Cap a long ring with a layer's `len`.
+- **Layer for weight.** A cue's `sfx` can be a list: a recorded transient over a synthesized sub (`audio.py sfx subdrop`), each landing its transient on the cue.
+- **Licenses:** CC0 and CC BY only for anything that might be commercial; `get` refuses BY-NC and Sampling+ unless told the piece is non-commercial, converts to WAV and logs each clip with its credit in `licenses.json`.
+- Not every cue needs a sound; effects that hit every cue read as a toy. Spend them on the hook, the signature moment and real on-screen contacts.
+- Freesound needs a free API key. If there's none, ask once for the user to create one and save it in `video/.freesound-key` (gitignored), and meanwhile use `audio.py sfx` so nothing stalls. Offer `search --urls` when the user wants to audition candidates themselves.
+
 ## References (load only what the current phase needs)
 
 | File | Load in | Contents |
@@ -62,7 +74,7 @@ Every piece has a music bed unless the user says otherwise. Silence is a tool fo
 | `references/spec-template.md` | Phases 2–3 | The story card, creative spec skeleton, `timeline.json` and `style.json` schemas, beat sheet and caption rules |
 | `references/pipeline.md` | Phases 0, 3, 4 | Project layout, the render contract, iteration and caching rules, Blender, footage and audio recipes, preflight |
 | `references/review.md` | Phases 2, 4, 5 | The audience pass and its personas, QC checks, the budgeted review pack, the 7-dimension rubric, the reviewer prompts and stop rule |
-| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `music.py`, `audio.py`, `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
+| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `music.py`, `audio.py`, `sfx.py` (recorded SFX from Freesound), `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
 
 If a reference is missing, keep going with the defaults in this file and say which one was missing.
 
@@ -81,7 +93,7 @@ If a reference is missing, keep going with the defaults in this file and say whi
 ### 0 Intake
 
 - Read every link, file, song, script, screenshot and brand kit the user gave. For reference videos, look at a contact sheet, not the whole file (`frames.py sheet`).
-- **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, and the fonts the direction needs. A missing tool gets one install command for the user to approve and a fallback route. Never stall.
+- **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, the fonts the direction needs, and whether a Freesound key is set (`FREESOUND_API_KEY` or `video/.freesound-key`). A missing tool gets one install command for the user to approve and a fallback route. Never stall.
 - **Set up `video/` once**: copy `references/kit/` to `video/lib/`, then `npm i -D playwright` in `video/`. Reuse preflight results and preferences; reuse components or recipes only for a series, a brand, or when asked.
 
 ### 1 Brief card
@@ -210,6 +222,7 @@ Use roles, not model names: the strongest available model for the reviewer and f
 - **Headless Chromium WebGL:** without a GPU only SwiftShader works, and it's slow; recent Chromium needs `--enable-unsafe-swiftshader` for it.
 - **Blender headless:** Cycles is the safe engine; Eevee needs an OpenGL context; scenes with Grease Pencil have aborted in background renders. Re-check on the installed version.
 - **Generative video:** roughly $0.05–0.75 per second depending on model and resolution (Veo 3.1, Kling 3.0, Runway Gen-4.5); the Sora API was reported to end on 2026-09-24.
+- **Freesound API:** free token key from freesound.org/apiv2/apply, sent as `Authorization: Token`; search returns `num_downloads`, `avg_rating`, `num_ratings`, `description` and license URLs; HQ previews are ~128 kbps mp3 and need only the token, originals need OAuth2. Requests are throttled per user (HTTP 429), and downloads are slow on some networks.
 - **Audio licenses:** VSCO-2 CE is CC0; Salamander Grand Piano is CC BY 3.0; Beat This! is MIT; madmom's models are CC BY-NC-SA; MusicGen weights are non-commercial; Kokoro TTS is Apache-2.0; ACE-Step is reported Apache-2.0. Eleven Music is marketed as cleared for commercial use; check plan exclusions.
 - **Delivery:** YouTube recommends MP4 with fast start, H.264 High, 4:2:0, BT.709 and 48 kHz AAC. Web loudness working target is about −14 LUFS and −1 dBTP; no social platform publishes an official target. Broadcast is −23 LUFS (EBU R128).
 - **Rights:** YouTube's Terms forbid downloading without permission; Content ID claims (block, monetize or track) are the usual outcome for fan edits. US guidance says prompts alone are unlikely to make output copyrightable.

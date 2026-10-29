@@ -47,6 +47,14 @@ def nearest_beat_error(t: float, bpm: float, offset: float) -> float:
     return abs(t - (offset + n * beat))
 
 
+def licensed(project_dir: Path) -> set[str]:
+    """Paths listed in the project's licenses.json."""
+    try:
+        return {e.get("path") for e in json.loads((project_dir / "licenses.json").read_text(encoding="utf-8"))}
+    except (OSError, ValueError, AttributeError):
+        return set()
+
+
 def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[str]]:
     """Return (errors, warnings) for a timeline dict."""
     errors: list[str] = []
@@ -108,6 +116,15 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
                 err = nearest_beat_error(t, audio["bpm"], audio.get("offset", 0.0))
                 if err > frame + 1e-9:
                     errors.append(f"cue '{c['id']}' at {t:g}s is {err * fps:.1f} frames off the beat grid")
+        raw = c.get("sfx")
+        for layer in (raw if isinstance(raw, list) else [raw] if raw else []):
+            path = layer.get("path") if isinstance(layer, dict) else layer
+            if not isinstance(path, str) or not path:
+                errors.append(f"cue '{c['id']}' has an sfx layer with no path")
+            elif isinstance(layer, dict) and layer.get("len") is not None and not layer["len"] > 0:
+                errors.append(f"cue '{c['id']}' sfx layer '{path}' needs len > 0")
+            elif project_dir is not None and Path(path).name.startswith("fs") and path not in licensed(project_dir):
+                warnings.append(f"cue '{c['id']}' uses {path}, which licenses.json doesn't list (sfx.py get logs it)")
         if kind == "hook" and t > 0.5:
             warnings.append(f"hook cue at {t:g}s; aim for 0.5s or earlier on social")
         if kind == "signature" and not 0.6 * duration <= t <= 0.75 * duration:

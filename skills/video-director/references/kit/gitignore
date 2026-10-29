@@ -1,7 +1,10 @@
 node_modules/
 */renders/
 */media/
-*/audio/*.wav
+*/audio/**/*.wav
+*/audio/**/*.mp3
 */assets/plates/
+.freesound-key
+.sfx-index.json
 .env*
 *.local.*

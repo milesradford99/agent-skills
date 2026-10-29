@@ -81,7 +81,7 @@ parallax ratios, palette (hex), type families and minimum sizes, texture.>
 
 ## Sound plan
 <Music: the user's track, or composed with lib/music.py (mood, tempo, sections that follow the cues).
-No music only if the user said so. The cue list with each SFX, and the one place silence is used.
+No music only if the user said so. The cue list with each SFX: the recorded clip (Freesound key, downloads, votes, why it fits) or the synthesized layer, and the one place silence is used.
 Voiceover and ducking only if the user asked for a voice.>
 
 ## Production steps
@@ -127,7 +127,8 @@ The single source of truth for timing. Picture and sound both read it.
   "cues": [
     { "id": "hook",      "t": 0.4,  "kind": "hook",      "sfx": "audio/sfx/impact.wav", "gain_db": -4, "on_beat": true },
     { "id": "grow",      "t": 2.0,  "kind": "hit",       "sfx": "audio/sfx/riser.wav",  "gain_db": -10 },
-    { "id": "signature", "t": 6.5,  "kind": "signature", "sfx": "audio/sfx/impact.wav", "gain_db": -2, "on_beat": true },
+    { "id": "signature", "t": 6.5,  "kind": "signature", "gain_db": -2, "on_beat": true,
+      "sfx": ["audio/sfx/fs2-cork-pop.wav", { "path": "audio/sfx/sub.wav", "gain_db": -6, "len": 0.8 }] },
     { "id": "title",     "t": 8.6,  "kind": "title",     "sfx": "audio/sfx/click.wav",  "gain_db": -8 }
   ],
   "qc_allow": [
@@ -140,6 +141,7 @@ Rules, all checked by `timeline.py check`:
 - `meta` has `width`, `height`, `fps`, `duration` and `seed`.
 - Shot ids are unique, lowercase letters, digits and hyphens, and each has `shots/<id>.js`. Shots are sorted by `start`, the first starts at 0, there are no gaps, and the last ends at or after `duration`. Shots may overlap for transitions; both render during the overlap, later shots on top.
 - Cue ids are unique and `0 ≤ t ≤ duration`. A cue with `"on_beat": true` must sit within one frame of the beat grid from `audio.bpm` and `audio.offset`.
+- A cue's `sfx` is a path or a list of layers (`path`, or `{ path, gain_db, len }`); each layer's transient lands on the cue, and `len` trims and fades its tail. `timeline.py check` warns when a Freesound clip (`fs<id>-…`) isn't in `licenses.json`.
 - `kind` is one of `hook`, `signature`, `title`, `end`, `hit` or `plain`. The checker warns when the hook is later than 0.5 s, when the signature moment is outside 60–75% of the runtime, or when less than 0.8 s follows the last cue.
 - In shot code, read cue times with `ctx.cue("hook")`, never a copied number. A param written as `"cue:hook"` is a reference to that cue.
 - `qc_allow` lists intentional black, frozen or silent stretches so QC doesn't flag them.
