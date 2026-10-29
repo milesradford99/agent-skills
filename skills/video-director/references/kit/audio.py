@@ -218,6 +218,11 @@ def build_mix(tl: dict, project_dir: Path) -> list[str]:
             "-map", "[out]", "-ar", str(RATE), "-c:a", "pcm_s24le", str(out)]
 
 
+def missing_inputs(cmd: list[str]) -> list[str]:
+    """Input files of a mix command that don't exist yet."""
+    return [cmd[i + 1] for i, a in enumerate(cmd[:-1]) if a == "-i" and not Path(cmd[i + 1]).is_file()]
+
+
 AAC_MARGIN_DB = 1.0  # AAC encoding adds inter-sample peaks; master this much below the delivery true peak
 
 
@@ -287,6 +292,11 @@ def main(argv: list[str]) -> int:
         if args.print:
             print(" ".join(cmd))
             return 0
+        missing = missing_inputs(cmd)
+        if missing:
+            print("missing audio: " + ", ".join(missing)
+                  + " (make it with audio.py sfx or music.py, or fetch it with sfx.py get)", file=sys.stderr)
+            return 1
         raw = Path(cmd[-1])
         raw.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(cmd, check=True)

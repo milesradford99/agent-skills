@@ -124,6 +124,14 @@ class AudioTest(unittest.TestCase):
         chain = audio.limiter_for(input_i=-22.9, input_tp=-6.6, lufs=-14, tp=-2)
         self.assertTrue(chain.startswith("alimiter=") and "latency=1" in chain)
 
+    def test_mix_names_missing_files_before_running_ffmpeg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            spec = tl(audio={"music": "audio/music.wav"}, cues=[{"id": "a", "t": 1.0, "sfx": "audio/sfx/gone.wav"}])
+            (Path(tmp) / "audio").mkdir()
+            audio.write_wav(Path(tmp) / "audio" / "music.wav", audio.sfx("click"))
+            missing = audio.missing_inputs(audio.build_mix(spec, Path(tmp)))
+            self.assertEqual([Path(m).name for m in missing], ["gone.wav"])
+
     def test_music_ducking_in_graph(self):
         spec = tl(cues=[], audio={"music": "audio/music.wav", "duck": [{"start": 2, "end": 4, "db": -9}]})
         graph = audio.build_mix(spec, Path("/p"))
