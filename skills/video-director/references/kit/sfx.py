@@ -7,13 +7,16 @@
         downloads the HQ previews in parallel, converts them to 48 kHz 24-bit WAV, and logs each in licenses.json
     python3 lib/sfx.py measure <file>...
         one line per file: length, where the transient sits, peak, how long it rings, and where the energy is
+    python3 lib/sfx.py key [--set]
+        whether a key is set (never printing it); --set reads one from stdin and saves it to the key file
 
 You can't hear these clips, so rank on evidence: downloads first, the number of ratings over their average
 (★4.4(380) beats ★4.9(6)), and the uploader's description of the source and recorder. Then measure before
 trusting a hit: a popular "thud" can be a 3 s cinematic rumble.
 
-Needs a free Freesound API key (https://freesound.org/apiv2/apply), read from FREESOUND_API_KEY or from
-video/.freesound-key (gitignored; confirm with `git check-ignore -v`). The key is sent in a header, never printed.
+Needs a free Freesound API key (https://freesound.org/apiv2/apply). It lives in one fixed place per user,
+~/.config/video-director/freesound-key (mode 600, outside every repo), so every project finds it;
+FREESOUND_API_KEY overrides it for one run. The key is sent in a header, never printed.
 Previews (~128 kbps mp3) are enough for SFX under a music bed; originals need OAuth2.
 """
 
@@ -41,7 +44,7 @@ from audio import RATE, read_wav_mono, transient_time  # noqa: E402
 
 API = "https://freesound.org/apiv2/search/text/"
 VIDEO_DIR = Path(__file__).resolve().parent.parent  # lib/ sits in video/
-KEY_FILE = VIDEO_DIR / ".freesound-key"
+KEY_FILE = Path.home() / ".config" / "video-director" / "freesound-key"
 INDEX = VIDEO_DIR / ".sfx-index.json"  # search results, so `get` knows the title, author, license and url
 FIELDS = "id,name,duration,num_downloads,avg_rating,num_ratings,license,username,description,previews"
 LICENSE_FILTER = {"cc0": 'license:"Creative Commons 0"',
@@ -108,14 +111,48 @@ def format_row(r: dict, urls: bool = False) -> str:
     return "\t".join(cols + ([r["preview"]] if urls else []))
 
 
-def api_key() -> str:
+def find_key(key_file: Path = KEY_FILE) -> tuple[str, str]:
+    """(key, where it came from), or ("", "") when there is none."""
     key = os.environ.get("FREESOUND_API_KEY", "").strip()
-    if not key and KEY_FILE.is_file():
-        key = KEY_FILE.read_text(encoding="utf-8").strip()
+    if key:
+        return key, "FREESOUND_API_KEY"
+    if key_file.is_file():
+        key = key_file.read_text(encoding="utf-8").strip()
+    return (key, str(key_file)) if key else ("", "")
+
+
+def save_key(key: str, key_file: Path = KEY_FILE) -> Path:
+    key = key.strip()
+    if len(key) < 20 or any(c.isspace() for c in key):
+        raise ValueError("that doesn't look like a Freesound API key (one token of 20+ characters)")
+    key_file.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    fd = os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as f:
+        f.write(key + "\n")
+    os.chmod(key_file, 0o600)  # also tightens a file that existed with looser permissions
+    return key_file
+
+
+def api_key() -> str:
+    key, _ = find_key()
     if not key:
-        raise SystemExit("no Freesound key: set FREESOUND_API_KEY or put it in video/.freesound-key "
-                         "(free at https://freesound.org/apiv2/apply). Without one, use audio.py sfx.")
+        raise SystemExit(f"no Freesound key: save one with `sfx.py key --set` (it goes to {KEY_FILE}; "
+                         "free at https://freesound.org/apiv2/apply). Without one, use audio.py sfx.")
     return key
+
+
+def key_cmd(args) -> int:
+    if args.set:
+        import getpass
+        raw = getpass.getpass("Freesound API key: ") if sys.stdin.isatty() else sys.stdin.readline()
+        try:
+            print(f"saved to {save_key(raw)} (mode 600)")
+        except ValueError as e:
+            raise SystemExit(str(e))
+        return 0
+    key, where = find_key()
+    print(f"key set ({len(key)} chars) from {where}" if key else f"no key; save one with `sfx.py key --set` ({KEY_FILE})")
+    return 0 if key else 1
 
 
 def fetch(url: str, key: str | None = None, timeout: float = 60, tries: int = 3) -> bytes:
@@ -338,9 +375,11 @@ def main(argv: list[str]) -> int:
     g.add_argument("--allow-nc", action="store_true")
     m = sub.add_parser("measure")
     m.add_argument("files", nargs="+")
+    k = sub.add_parser("key")
+    k.add_argument("--set", action="store_true", help="read a key from stdin and save it to the key file")
     args = ap.parse_args(argv)
     try:
-        return {"search": search, "get": get, "measure": measure_cmd}[args.cmd](args)
+        return {"search": search, "get": get, "measure": measure_cmd, "key": key_cmd}[args.cmd](args)
     except (OSError, urllib.error.URLError) as e:
         raise SystemExit(f"network error: {getattr(e, 'reason', e)}. Freesound can be slow or blocked on some "
                          "networks; retry, set https_proxy, or fall back to audio.py sfx.")

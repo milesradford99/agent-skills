@@ -62,7 +62,7 @@ You can't hear, so left alone you synthesize effects and judge them by their mat
 - **Layer for weight.** A cue's `sfx` can be a list: a recorded transient over a synthesized sub (`audio.py sfx subdrop`), each landing its transient on the cue.
 - **Licenses:** CC0 and CC BY only for anything that might be commercial; `get` refuses BY-NC and Sampling+ unless told the piece is non-commercial, converts to WAV and logs each clip with its credit in `licenses.json`.
 - Not every cue needs a sound; effects that hit every cue read as a toy. Spend them on the hook, the signature moment and real on-screen contacts.
-- Freesound needs a free API key. If there's none, ask once for the user to create one and save it in `video/.freesound-key` (gitignored), and meanwhile use `audio.py sfx` so nothing stalls. Offer `search --urls` when the user wants to audition candidates themselves.
+- Freesound needs a free API key, kept in one fixed place per user: `~/.config/video-director/freesound-key` (mode 600, outside every repo, so all projects share it). Check with `sfx.py key`. If there's none, ask once for the user to create one; save it with `sfx.py key --set` (reads stdin, never an argument, never printed), and meanwhile use `audio.py sfx` so nothing stalls. Offer `search --urls` when the user wants to audition candidates themselves.
 
 ## References (load only what the current phase needs)
 
@@ -93,7 +93,7 @@ If a reference is missing, keep going with the defaults in this file and say whi
 ### 0 Intake
 
 - Read every link, file, song, script, screenshot and brand kit the user gave. For reference videos, look at a contact sheet, not the whole file (`frames.py sheet`).
-- **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, the fonts the direction needs, and whether a Freesound key is set (`FREESOUND_API_KEY` or `video/.freesound-key`). A missing tool gets one install command for the user to approve and a fallback route. Never stall.
+- **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, the fonts the direction needs, and whether a Freesound key is set (`python3 lib/sfx.py key`). A missing tool gets one install command for the user to approve and a fallback route. Never stall.
 - **Set up `video/` once**: copy `references/kit/` to `video/lib/`, then `npm i -D playwright` in `video/`. Reuse preflight results and preferences; reuse components or recipes only for a series, a brand, or when asked.
 
 ### 1 Brief card

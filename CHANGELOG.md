@@ -32,7 +32,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
   - New `sfx.py`: searches Freesound through its official API, re-ranks relevance results by downloads and shows votes, license and the uploader's description; `get` downloads HQ previews in parallel, converts them to 48 kHz WAV and logs source, license and credit in `licenses.json`, refusing BY-NC and Sampling+ unless the piece is non-commercial; `measure` reports length, transient, ring and energy band so a popular clip is checked before it's trusted.
   - SKILL.md prefers recorded effects picked on evidence (downloads, rating count over average, the description as listening) over synthesis, which stays as the fallback without a key and as a sub layer.
   - The mixer takes a list of layers per cue (`{path, gain_db, len}`), aligns each layer's transient on the cue for any audio format, and trims and fades a long ring. `timeline.py check` validates layers and warns when a Freesound clip isn't in `licenses.json`.
-  - The kit's gitignore covers downloaded audio under `audio/`, the API key file and the search index.
+  - The Freesound key lives in one fixed place, `~/.config/video-director/freesound-key` (mode 600, outside every repo); `sfx.py key` says whether it's set without printing it, and `sfx.py key --set` saves one from stdin. `FREESOUND_API_KEY` overrides it for one run.
+  - The kit's gitignore covers downloaded audio under `audio/` and the search index.
+  - `audio.py mix` names missing audio files instead of failing inside ffmpeg.
   - `timeline.py check` validates grooves and the new optional `chapters` table.
 - Skills may carry an optional `references/` folder; the validator checks that every `references/...` path a SKILL.md mentions exists.
 - Claude Code plugin marketplace (`milesradford-skills`) with one plugin per skill.

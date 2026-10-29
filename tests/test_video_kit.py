@@ -4,6 +4,7 @@ import json
 import sys
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -210,6 +211,23 @@ class SfxTest(unittest.TestCase):
         self.assertEqual([e["path"] for e in log], ["audio/music.wav", "audio/sfx/a.wav"])
         self.assertEqual(log[1]["attribution"], '"Cork pop" by b (https://freesound.org/s/2/), CC-BY-4.0')
         self.assertIsNone(sfx.license_entry(rows[1], "x")["attribution"])
+
+    def test_key_is_saved_private_and_env_overrides_it(self):
+        with tempfile.TemporaryDirectory() as tmp, unittest.mock.patch.dict("os.environ", {}, clear=False):
+            import os
+            os.environ.pop("FREESOUND_API_KEY", None)
+            path = Path(tmp) / "cfg" / "freesound-key"
+            self.assertEqual(sfx.find_key(path), ("", ""))
+            path.parent.mkdir()
+            path.write_text("old")
+            os.chmod(path, 0o644)
+            sfx.save_key("a" * 40 + "\n", path)
+            self.assertEqual(sfx.find_key(path), ("a" * 40, str(path)))
+            self.assertEqual(path.stat().st_mode & 0o777, 0o600)
+            os.environ["FREESOUND_API_KEY"] = "b" * 40
+            self.assertEqual(sfx.find_key(path), ("b" * 40, "FREESOUND_API_KEY"))
+            with self.assertRaises(ValueError):
+                sfx.save_key("two words here", path)
 
     def test_measure_reports_transient_ring_and_band(self):
         click = sfx.measure(audio.sfx("click"), 48000)

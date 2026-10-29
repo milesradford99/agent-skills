@@ -29,7 +29,7 @@ Start a project from the chosen direction's keyframe page. For a blank start, `l
 
 ```sh
 ffmpeg -hide_banner -version | head -1
-test -n "$FREESOUND_API_KEY" -o -s .freesound-key && echo freesound key ok   # recorded SFX; else audio.py sfx
+python3 lib/sfx.py key             # Freesound key in ~/.config/video-director/freesound-key? else audio.py sfx
 ffmpeg -hide_banner -encoders | grep -E 'libx264|aac'
 ffmpeg -hide_banner -filters | grep -E ' (drawtext|loudnorm|ebur128|blackdetect|freezedetect|showspectrumpic) '
 node --version                     # 22+
