@@ -1,0 +1,100 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; background: #0e0f12; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<script type="module">
+// A hand-written seek(t) page with no runtime: one continuous camera move, each beat a transformation of the
+// last (line -> circle -> opening ring), and the words carried by timed captions instead of a voice.
+// It meets the render contract: window.seek(t), window.DURATION, window.__ready.
+const tl = await (await fetch('timeline.json')).json();
+const { width: W, height: H, duration } = tl.meta;
+const cue = id => tl.cues.find(c => c.id === id).t;
+const canvas = document.getElementById('c');
+canvas.width = W; canvas.height = H;
+const g = canvas.getContext('2d');
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const range = (t, a, b) => clamp((t - a) / (b - a));
+const outExpo = u => (u >= 1 ? 1 : 1 - 2 ** (-10 * u));
+const inOut = u => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2);
+const ink = '#f2ede4', accent = '#ff5a36';
+
+function point(i, n, bend, open) {
+  // Points on a horizontal line morph to a circle (bend 0..1), then the circle opens outward (open 0..1).
+  const s = i / (n - 1);
+  const lx = (s - 0.5) * 1200, ly = 0;
+  const a = s * Math.PI * 2 - Math.PI / 2, r = 220 + open * (50 + 90 * ((i * 7919) % 13) / 13);
+  const cx = Math.cos(a) * r, cy = Math.sin(a) * r;
+  return [lx + (cx - lx) * bend, ly + (cy - ly) * bend];
+}
+
+function captions(t) {
+  const c = tl.captions.find(c => t >= c.start && t < c.end);
+  if (!c) return;
+  const words = c.text.split(' ');
+  const per = (c.end - c.start - 0.3) / words.length;
+  g.font = '600 56px system-ui, sans-serif';
+  g.textBaseline = 'middle';
+  const widths = words.map(w => g.measureText(w + ' ').width);
+  let x = W / 2 - widths.reduce((a, b) => a + b, 0) / 2;
+  words.forEach((w, i) => {
+    const on = c.start + i * per;
+    const u = outExpo(range(t, on, on + 0.25));
+    g.globalAlpha = u;
+    g.fillStyle = t < on + per ? accent : ink; // the word being "said" is highlighted
+    g.fillText(w, x, H - 110 + (1 - u) * 18);
+    x += widths[i];
+  });
+  g.globalAlpha = 1;
+}
+
+window.DURATION = duration;
+window.seek = t => {
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = tl.meta.background;
+  g.fillRect(0, 0, W, H);
+
+  const draw = outExpo(range(t, 0, cue('hook') + 0.2));
+  const bend = inOut(range(t, cue('bend'), cue('signature') - 0.3));
+  const open = outExpo(range(t, cue('signature'), cue('signature') + 1.2));
+  // One camera for the whole piece: a slow push in that accelerates through the signature moment.
+  const zoom = 1 + 0.12 * (t / duration) + 0.15 * open;
+  const rot = -0.15 * bend + 0.25 * open;
+  g.setTransform(zoom * Math.cos(rot), zoom * Math.sin(rot), -zoom * Math.sin(rot), zoom * Math.cos(rot), W / 2, H / 2 - 75);
+
+  const n = 96, shown = Math.max(2, Math.round(n * draw));
+  g.lineWidth = 10 / zoom;
+  g.lineCap = 'round';
+  g.strokeStyle = ink;
+  g.beginPath();
+  for (let i = 0; i < shown; i++) {
+    const [x, y] = point(i, n, bend, open);
+    if (i === 0) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.globalAlpha = 1 - outExpo(range(t, cue('signature'), cue('signature') + 0.3));
+  g.stroke();
+  g.globalAlpha = 1;
+  if (open > 0) {
+    for (let i = 0; i < n; i += 3) {
+      const [x, y] = point(i, n, bend, open);
+      g.fillStyle = i % 4 === 0 ? accent : ink;
+      g.beginPath();
+      g.arc(x, y, (4 + 10 * open) / zoom, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  captions(t);
+};
+await document.fonts.ready;
+window.__ready = true;
+</script>
+</body>
+</html>
