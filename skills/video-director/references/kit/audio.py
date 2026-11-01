@@ -8,9 +8,13 @@
                                                             audio.lufs / audio.true_peak into audio.out
     python3 lib/audio.py master in.wav out.wav [--lufs -14] [--tp -1]   two-pass loudnorm, 48 kHz
 
+With audio.platform_music set (a track the user adds from the platform's own library at upload), mix leaves
+the music out and only limits the effects track; --guide writes guide.wav with the music for private checks.
+
 SFX are 48 kHz mono 24-bit WAV. The recipes are a fallback and a layer (a sub under a recorded hit);
 prefer recorded sounds from sfx.py, which logs them in licenses.json. A cue's sfx can be one path or a
-list of layers, each {path, gain_db, len}; every layer's transient lands on the cue.
+list of layers, each {path, gain_db, from, len}; every layer's transient lands on the cue. from skips a
+lead-in in seconds, so room noise before a hit isn't heard ahead of the picture.
 """
 
 from __future__ import annotations
@@ -150,7 +154,7 @@ def sfx(kind: str, dur: float | None = None, seed: int = 1, pitch: float = 1.0) 
 # ---------- mix ----------
 
 def sfx_layers(cue: dict) -> list[dict]:
-    """A cue's sfx is a path, or a list of paths or {path, gain_db, len} layers that all land on the cue
+    """A cue's sfx is a path, or a list of paths or {path, gain_db, from, len} layers that all land on the cue
     (a recorded transient over a synthesized sub, say)."""
     raw = cue.get("sfx")
     if not raw:
@@ -176,7 +180,7 @@ def file_transient(path: Path) -> float:
     return transient_time(samples, rate)
 
 
-def build_mix(tl: dict, project_dir: Path) -> list[str]:
+def build_mix(tl: dict, project_dir: Path, with_music: bool = True) -> list[str]:
     """Return the ffmpeg argument list that renders the unmastered mix next to audio.out (as *.raw.wav)."""
     audio = tl.get("audio", {})
     duration = tl["meta"]["duration"]
@@ -187,7 +191,7 @@ def build_mix(tl: dict, project_dir: Path) -> list[str]:
     labels: list[str] = []
 
     music = audio.get("music")
-    if music:
+    if music and with_music:
         inputs += ["-i", str(project_dir / music)]
         duck = "".join(
             f",volume=enable='between(t,{d['start']},{d['end']})':volume={d.get('db', -8)}dB"
@@ -199,13 +203,15 @@ def build_mix(tl: dict, project_dir: Path) -> list[str]:
     for c in tl.get("cues", []):
         for layer in sfx_layers(c):
             path = project_dir / layer["path"]
-            start = max(0.0, c["t"] - file_transient(path))
+            head = layer.get("from", 0.0)  # skips a sample's lead-in, which would otherwise sound before the hit
+            start = max(0.0, c["t"] - max(0.0, file_transient(path) - head))
             idx = len(inputs) // 2
             inputs += ["-i", str(path)]
             label = f"[s{idx}]"
             # a layer's length caps a long ring (fade over the last 20%), so a tap stays a tap
-            cut = (f",atrim=0:{layer['len']},afade=t=out:st={layer['len'] * 0.8:.3f}:d={layer['len'] * 0.2:.3f}"
-                   if layer.get("len") else "")
+            cut = f",atrim=start={head},asetpts=PTS-STARTPTS" if head else ""
+            if layer.get("len"):
+                cut += f",atrim=0:{layer['len']},afade=t=out:st={layer['len'] * 0.8:.3f}:d={layer['len'] * 0.2:.3f}"
             chains.append(f"[{idx}:a]aresample={RATE},aformat=channel_layouts=stereo{cut},"
                           f"volume={c.get('gain_db', 0) + layer.get('gain_db', 0)}dB,adelay={round(start * 1000)}:all=1{label}")
             labels.append(label)
@@ -246,6 +252,14 @@ def limiter_for(input_i: float, input_tp: float, lufs: float, tp: float) -> str:
     return f"alimiter=limit={10 ** (ceiling_db / 20):.4f}:level=false:attack=1:release=60:latency=1"
 
 
+def limit_only(src: Path, dst: Path, tp: float = -1.0) -> None:
+    """For an effects-only track: stop it clipping, and leave its level for the platform's mix to sit under."""
+    ceiling = 10 ** ((tp - AAC_MARGIN_DB) / 20)
+    chain = f"aresample=192000,alimiter=limit={ceiling:.4f}:level=false:attack=0.5:release=50,aresample={RATE}"
+    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-af", chain, "-ar", str(RATE),
+                    "-c:a", "pcm_s24le", str(dst)], check=True)
+
+
 def master(src: Path, dst: Path, lufs: float = -14.0, tp: float = -1.0) -> dict:
     """Peak-limit if needed, then two-pass linear loudnorm; 48 kHz out. Returns the first measurement."""
     inner_tp = tp - AAC_MARGIN_DB
@@ -275,6 +289,7 @@ def main(argv: list[str]) -> int:
     m = sub.add_parser("mix")
     m.add_argument("timeline")
     m.add_argument("--print", action="store_true", help="print the ffmpeg command instead of running it")
+    m.add_argument("--guide", action="store_true", help="with audio.platform_music: also mix the local music, as guide.wav for private checks")
     ms = sub.add_parser("master")
     ms.add_argument("src")
     ms.add_argument("dst")
@@ -288,7 +303,9 @@ def main(argv: list[str]) -> int:
     elif args.cmd == "mix":
         path = Path(args.timeline)
         tl = json.loads(path.read_text(encoding="utf-8"))
-        cmd = build_mix(tl, path.parent)
+        audio = tl.get("audio", {})
+        sfx_only = bool(audio.get("platform_music")) and not args.guide
+        cmd = build_mix(tl, path.parent, with_music=not sfx_only)
         if args.print:
             print(" ".join(cmd))
             return 0
@@ -300,8 +317,13 @@ def main(argv: list[str]) -> int:
         raw = Path(cmd[-1])
         raw.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(cmd, check=True)
-        audio = tl.get("audio", {})
         final = path.parent / audio.get("out", "audio/mix.wav")
+        if args.guide:
+            final = final.with_name("guide.wav")
+        if sfx_only:
+            limit_only(raw, final, audio.get("true_peak", -1.0))
+            print(f"{final} (effects only; add {audio['platform_music']} on the platform at upload)")
+            return 0
         meas = master(raw, final, audio.get("lufs", -14.0), audio.get("true_peak", -1.0))
         print(f"{final} (raw mix was {meas['input_i']} LUFS, {meas['input_tp']} dBTP)")
     else:

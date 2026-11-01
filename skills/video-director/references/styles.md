@@ -77,6 +77,14 @@ Frame rate is part of the style. Smooth 60 fps tweening is the most common way a
 | Trailer / cinematic | Letterbox, slow push-ins, title cards on black, silence before the hit | 24 fps; title cards held 1.5–2.5 s; a drop to silence of 0.3–0.8 s before the title | Wall-to-wall music; no breath |
 | UGC / talking-head | Jump cuts on breaths, punch-in zooms, burned-in captions | Punch-in of 10–15% every 3–6 s; captions as above | Dead air left in; captions out of sync |
 
+## The dark knowledge look
+
+The house style of the 2026 vibe知识大赏 wave, as reverse-engineered by several open-source repos from the top videos. Use it for the "best-in-class conventional" direction on a knowledge short, and treat it as what the other four directions must not be.
+
+- **Signatures:** deep blue-black ground (around `#0A0A1E`); five zones (watermark, top label, central animation, annotation band, subtitle band); gold or neon accents; serif Chinese type (Noto Serif CJK, Source Han Serif); film-grain vignette; layers of foreground, subject and background that never all stop.
+- **Numbers:** subtitle band at 85–91% of the height; fewer than 25% static seconds; music around 76–112 BPM; title on the first big accent; cuts on bar lines.
+- **Fails when:** it's the template and nothing else. Dark ground, glowing lines, particles and one electronic track were already being called a "model look" in October 2026. Change at least the palette, the type or the central device, and make the look come from the subject.
+
 ## Direction vocabulary
 
 Draw from these with a real RNG (see `originality.md`) and extend them with the user's own interests.

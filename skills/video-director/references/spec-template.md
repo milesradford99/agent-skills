@@ -26,6 +26,8 @@ What the video *says*, on one screen, in the final language. The user approves i
 
 Keep it to what the user needs to judge content; craft details belong in the spec below.
 
+For a **knowledge short**, the beat table follows that form's arc in `formats.md`, and the card adds: **Bet:** the guess the opening asks for, and **Computed:** what's really simulated (script and seed) and what's labeled schematic.
+
 For a **lesson**, the beat table becomes a chapter table (number, the one concept, the teaching-page line, the world example, the seconds), and the card adds two lines: **Instrument:** what stays on screen throughout and how each chapter adds to it; **Fact check:** the verdict counts from `review.md` and any simplification the user approved.
 
 
@@ -115,6 +117,7 @@ The single source of truth for timing. Picture and sound both read it.
     "sections": [{ "start": 0, "end": 0.4, "energy": 0 }, { "start": 0.4, "end": 4.5, "energy": 1 },
                  { "start": 4.5, "end": 6.5, "energy": 2 }, { "start": 6.5, "end": 8.6, "energy": 3 }, { "start": 8.6, "end": 10, "energy": 1 }],
     "duck": [{ "start": 2.0, "end": 4.5, "db": -8 }],
+    "beats": "audio/beats.json",
     "out": "audio/mix.wav",
     "lufs": -14, "true_peak": -1
   },
@@ -141,16 +144,19 @@ Rules, all checked by `timeline.py check`:
 - `meta` has `width`, `height`, `fps`, `duration` and `seed`.
 - Shot ids are unique, lowercase letters, digits and hyphens, and each has `shots/<id>.js`. Shots are sorted by `start`, the first starts at 0, there are no gaps, and the last ends at or after `duration`. Shots may overlap for transitions; both render during the overlap, later shots on top.
 - Cue ids are unique and `0 ≤ t ≤ duration`. A cue with `"on_beat": true` must sit within one frame of the beat grid from `audio.bpm` and `audio.offset`.
+- A cue with `"on_accent": true` must sit within one frame of an accent in `audio.beats` (default `audio/beats.json`, written by `beats.py`). Use it for a title card or a drop.
 - A cue's `sfx` is a path or a list of layers (`path`, or `{ path, gain_db, len }`); each layer's transient lands on the cue, and `len` trims and fades its tail. `timeline.py check` warns when a Freesound clip (`fs<id>-…`) isn't in `licenses.json`.
 - `kind` is one of `hook`, `signature`, `title`, `end`, `hit` or `plain`. The checker warns when the hook is later than 0.5 s, when the signature moment is outside 60–75% of the runtime, or when less than 0.8 s follows the last cue.
 - In shot code, read cue times with `ctx.cue("hook")`, never a copied number. A param written as `"cue:hook"` is a reference to that cue.
 - `qc_allow` lists intentional black, frozen or silent stretches so QC doesn't flag them.
 
-`captions` (optional) holds on-screen words with times: `[{ "start": 0.5, "end": 1.9, "text": "Start with a line." }]`. Keep each line's start on a cue or beat so words and sound land together. Density: at most 3 live lines on screen, older lines dimmed or cleared, at least 44 px at 1080p, and on screen long enough to read (`timeline.py check` warns above about 9 CJK or 17 Latin characters per second).
+`captions` (optional) holds on-screen words with times: `[{ "start": 0.5, "end": 1.9, "text": "Start with a line.", "sub": "optional second-language line" }]`. `meta.max_caption_chars` sets a per-screen limit that `timeline.py check` warns on. Keep each line's start on a cue or beat so words and sound land together. Density: at most 3 live lines on screen, older lines dimmed or cleared, at least 44 px at 1080p, and on screen long enough to read (`timeline.py check` warns above about 9 CJK or 17 Latin characters per second).
 
 `audio.grooves` (optional) holds windows where the soundtrack plays the content's own pattern instead of the bed: `[{ "start": 30, "end": 76, "groove": "rock", "bpm": 120 }, { "start": 80, "end": 96, "lanes": { "kick": "X.x.x..", "hat": "xxxxxxx" }, "per_beat": 2 }]`. Presets and lane names are listed in `music.py`; windows may not overlap, and `timeline.py check` validates them. `music.py` writes every hit to `audio/events.json` as `{t, end, groove, window, lane, step, bar, accent}`; the page fetches it before setting `__ready` and draws from it, never from its own copy of the pattern.
 
 `chapters` (optional, for lessons) is page data: `[{ "id": "01", "title": "Tempo", "start": 18.0 }, ...]`, sorted, starting within the runtime. The page shows the current chapter number from it, and retiming a chapter is a data edit.
+
+`audio.platform_music` (optional) names a track the user adds from the platform's own library at upload. `audio.py mix` then leaves `audio.music` out, which stays a local guide for `beats.py` and `mix --guide`, and only limits the effects track; `qc.py` skips loudness and silence. `publish.md` tells the user which track and where it starts.
 
 `audio.sections` (optional) sets the score's energy, 0 (rest) to 3 (full); without it `music.py` derives an arc from the hook and signature cues. `audio.no_music` holds the user's reason when they don't want music; `timeline.py check` warns when neither it nor `audio.music` is set.
 

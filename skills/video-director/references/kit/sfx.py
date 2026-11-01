@@ -217,7 +217,7 @@ def search(args) -> int:
 # ---------- get ----------
 
 def slug(text: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:40]
+    return re.sub(r"[^a-z0-9]+", "-", re.sub(r"\.(wav|aif+|flac|mp3|ogg)\s*$", "", text.lower())).strip("-")[:40].rstrip("-")
 
 
 def license_entry(row: dict, path: str) -> dict:

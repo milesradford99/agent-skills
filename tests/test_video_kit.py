@@ -12,6 +12,7 @@ KIT = ROOT / "skills" / "video-director" / "references" / "kit"
 sys.path.insert(0, str(KIT))
 
 import audio  # noqa: E402
+import beats  # noqa: E402
 import frames  # noqa: E402
 import music  # noqa: E402
 import qc  # noqa: E402
@@ -153,6 +154,18 @@ class AudioTest(unittest.TestCase):
             self.assertIn("atrim=0:0.4,afade=t=out:st=0.320:d=0.080,volume=-9dB", graph)
             self.assertIn("amix=inputs=2", graph)
 
+    def test_layer_from_skips_the_lead_in_and_keeps_the_hit_on_the_cue(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            sample = audio.sfx("riser", dur=1.0)
+            audio.write_wav(project / "audio" / "sfx" / "r.wav", sample)
+            lead = audio.file_transient(project / "audio" / "sfx" / "r.wav")
+            spec = tl(audio={"out": "audio/mix.wav"}, cues=[{"id": "a", "t": 4.0, "sfx": {"path": "audio/sfx/r.wav", "from": 0.2}}])
+            cmd = audio.build_mix(spec, project)
+            graph = cmd[cmd.index("-filter_complex") + 1]
+            self.assertIn("atrim=start=0.2,asetpts=PTS-STARTPTS", graph)
+            self.assertIn(f"adelay={round((4.0 - (lead - 0.2)) * 1000)}:all=1", graph)
+
     def test_sfx_layer_shape_and_license_log_are_checked(self):
         with tempfile.TemporaryDirectory() as tmp:
             project = Path(tmp)
@@ -238,6 +251,75 @@ class SfxTest(unittest.TestCase):
         self.assertGreater(sub["low"], 0.8)
         self.assertGreater(sub["ring"], click["ring"])
         self.assertIn("(low)", sfx.describe(sub))
+
+
+class BeatsTest(unittest.TestCase):
+    @staticmethod
+    def track(bpm, offset, jump, seconds=40.0):
+        """Noise clicks on a steady grid that get much louder from `jump` on."""
+        np = beats.np
+        x = np.zeros(int(seconds * beats.RATE))
+        n, shape = 0, np.exp(-np.arange(1100) / 220.0)
+        while offset + n * 60.0 / bpm < seconds:
+            t = offset + n * 60.0 / bpm
+            i = int(t * beats.RATE)
+            hit = np.random.default_rng(n).normal(size=1100) * shape * (0.5 if t >= jump else 0.06)
+            x[i:i + 1100] += hit[:len(x[i:i + 1100])]
+            n += 1
+        return x
+
+    def test_finds_tempo_grid_and_the_first_big_accent(self):
+        result = beats.analyze(self.track(78, 0.41, 17.1), fps=30)
+        self.assertAlmostEqual(result["bpm"], 78, delta=0.1)
+        self.assertAlmostEqual(result["offset"], 0.41, delta=0.02)
+        first_loud = 0.41 + 22 * 60 / 78  # the first click past the jump
+        self.assertAlmostEqual(result["first_big"], first_loud, delta=0.02)
+        self.assertEqual(result["accents"][0]["frame"], round(result["accents"][0]["t"] * 30))
+
+    def test_composed_score_is_read_on_the_beat_not_the_off_beat(self):
+        tl_ = {"meta": {"duration": 30, "fps": 30}, "audio": {"bpm": 90},
+               "cues": [{"id": "hook", "t": 0.4, "kind": "hook"}, {"id": "signature", "t": 20, "kind": "signature"}]}
+        np = beats.np
+        y = music.compose(tl_).mean(axis=0)
+        x = np.interp(np.arange(0, len(y), 48000 / beats.RATE), np.arange(len(y)), y)
+        result = beats.analyze(x, fps=30)
+        self.assertAlmostEqual(result["bpm"], 90, delta=0.1)
+        period = 60 / 90
+        self.assertLess(min(result["offset"], period - result["offset"]), 0.03)
+
+    def test_on_accent_cues_are_held_to_beats_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            project = Path(tmp)
+            spec = tl(cues=[{"id": "title", "t": 3.0, "kind": "title", "on_accent": True}])
+            errors, _ = timeline.check(spec, project)
+            self.assertTrue(any("beats.py" in e for e in errors))
+            (project / "audio").mkdir()
+            (project / "audio" / "beats.json").write_text(json.dumps({"accents": [{"t": 3.5}]}))
+            errors, _ = timeline.check(spec, project)
+            self.assertTrue(any("nearest is 3.5s" in e for e in errors))
+            spec["cues"][0]["t"] = 3.51
+            errors, _ = timeline.check(spec, project)
+            self.assertEqual([e for e in errors if "accent" in e], [])
+
+
+class CaptionTest(unittest.TestCase):
+    def test_bilingual_line_and_screen_limit(self):
+        meta = {"width": 1920, "height": 1080, "fps": 30, "duration": 10.0, "seed": "s", "max_caption_chars": 20}
+        long_cn = "这是一行超过二十个字符的中文字幕用来测试每屏字数的上限检查"
+        caps = [{"start": 1, "end": 2, "text": "短句", "sub": "a much longer English line that nobody could read in one second"},
+                {"start": 3, "end": 9, "text": long_cn}]
+        _, warnings = timeline.check(tl(meta=meta, captions=caps))
+        self.assertTrue(any("caption 0" in w and "to read" in w for w in warnings))
+        self.assertTrue(any("caption 1" in w and "on one screen" in w for w in warnings))
+
+
+class PlatformMusicTest(unittest.TestCase):
+    def test_mix_leaves_platform_music_out_and_guide_keeps_it(self):
+        spec = tl(cues=[{"id": "a", "t": 1.0, "sfx": "audio/sfx/a.wav"}],
+                  audio={"music": "audio/guide.mp3", "platform_music": "a library track"})
+        self.assertNotIn("guide.mp3", " ".join(audio.build_mix(spec, Path("/p"), with_music=False)))
+        self.assertIn("guide.mp3", " ".join(audio.build_mix(spec, Path("/p"))))
+        self.assertEqual([w for w in timeline.check(spec)[1] if "music" in w], [])
 
 
 class MusicTest(unittest.TestCase):
@@ -373,6 +455,29 @@ class QcTest(unittest.TestCase):
         self.assertEqual(checks["music bed"]["level"], "warn")
         self.assertFalse(checks["no unplanned black"]["ok"])
         self.assertFalse(checks["no unplanned silence"]["ok"])
+
+    def test_static_share_and_empty_first_frame_warn(self):
+        info = {"format": {"duration": "10.0"}, "streams": [
+            {"codec_type": "video", "width": 1920, "height": 1080, "r_frame_rate": "30/1", "avg_frame_rate": "30/1",
+             "codec_name": "h264", "pix_fmt": "yuv420p"}]}
+        events = {"black": [], "silence": [], "lufs": None, "true_peak": None, "first_ymax": 24,
+                  "freeze": [(1.0, 2.5), (5.0, 6.5)]}
+        checks = {c["name"]: c for c in qc.evaluate(info, events, tl())}
+        self.assertTrue(checks["no unplanned freeze"]["ok"])  # each hold is under 2 s
+        self.assertFalse(checks["static share"]["ok"])
+        self.assertEqual(checks["static share"]["level"], "warn")
+        self.assertFalse(checks["first frame"]["ok"])
+
+    def test_platform_music_skips_loudness_and_silence(self):
+        info = {"format": {"duration": "10.0"}, "streams": [
+            {"codec_type": "video", "width": 1920, "height": 1080, "r_frame_rate": "30/1", "avg_frame_rate": "30/1",
+             "codec_name": "h264", "pix_fmt": "yuv420p"},
+            {"codec_type": "audio", "sample_rate": "48000", "channels": 2}]}
+        events = {"black": [], "freeze": [], "silence": [(2.0, 8.0)], "lufs": -30.0, "true_peak": -5.0}
+        names = {c["name"]: c for c in qc.evaluate(info, events, tl(audio={"out": "a.wav", "platform_music": "x"}))}
+        self.assertNotIn("loudness", names)
+        self.assertNotIn("no unplanned silence", names)
+        self.assertTrue(names["music bed"]["ok"])
 
 
 if __name__ == "__main__":

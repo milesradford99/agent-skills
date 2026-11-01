@@ -35,6 +35,15 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
   - The Freesound key lives in one fixed place, `~/.config/video-director/freesound-key` (mode 600, outside every repo); `sfx.py key` says whether it's set without printing it, and `sfx.py key --set` saves one from stdin. `FREESOUND_API_KEY` overrides it for one run.
   - The kit's gitignore covers downloaded audio under `audio/` and the search index.
   - `audio.py mix` names missing audio files instead of failing inside ffmpeg.
+- `video-director` 0.4.0, from a research report on how #vibe知识大赏 videos are made:
+  - A Knowledge short format (1–3 min, one idea, no voice): the hook on frame 1, a bet before the reveal, the title on the first big accent, a computed simulation, a landing in everyday life, then sources. Plus the dark knowledge look as a style to beat, not a default.
+  - New `beats.py`: tempo, beat grid and big accents of any track. Cues can set `on_accent`, and `timeline.py check` holds them to it.
+  - `audio.platform_music`: delivers an effects-only video when the user adds a licensed track from the platform's library at upload, with a private `mix --guide`.
+  - Captions take a second-language line (`sub`) and an optional per-screen limit (`meta.max_caption_chars`).
+  - `qc.py` warns on an empty first frame and on static picture over 25% of the runtime.
+  - The opening is rendered and shown first on longer pieces. Reference videos are read into numbers for `style.json`. Delivery adds a publish pack with the AI-content declaration, and offers a playable version of a simulation.
+  - From a full test video (a 55-second waiting-time paradox short): a layer's `from` skips a sample's lead-in; `render.mjs --check` compares decoded pixels with a small tolerance, since the first frame after load can differ by a level or two; `beats.py` no longer misses a clear accent that's weaker than the biggest one; `sfx.py get` keeps file names shorter and drops the original extension; guidance on settling the bet, keeping the main device on screen, keeping reviewed renders, and reading the static-share check.
+  - Prices in SKILL.md no longer use a dollar sign before a digit, which skill loaders replace with arguments; the validator now fails on it.
   - `timeline.py check` validates grooves and the new optional `chapters` table.
 - Skills may carry an optional `references/` folder; the validator checks that every `references/...` path a SKILL.md mentions exists.
 - Claude Code plugin marketplace (`milesradford-skills`) with one plugin per skill.

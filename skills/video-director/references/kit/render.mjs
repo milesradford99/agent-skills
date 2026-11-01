@@ -133,6 +133,22 @@ async function frameAt(page, T, video = false) {
   if (video && !o.png) return page.screenshot({ type: 'jpeg', quality: 95, animations: 'disabled', caret: 'hide' });
   return page.screenshot({ type: 'png', animations: 'disabled', caret: 'hide' });
 }
+async function pixelsMatch(page, a, b, tolerance = 2) {
+  const diff = await page.evaluate(async ([x, y]) => {
+    const decode = async data => {
+      const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${data}`)).blob());
+      const c = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+      c.drawImage(bitmap, 0, 0);
+      return c.getImageData(0, 0, bitmap.width, bitmap.height).data;
+    };
+    const [p, q] = [await decode(x), await decode(y)];
+    let max = p.length === q.length ? 0 : 255;
+    for (let i = 0; i < p.length; i++) max = Math.max(max, Math.abs(p[i] - q[i]));
+    return max;
+  }, [a.toString('base64'), b.toString('base64')]);
+  return diff <= tolerance;
+}
+
 function encoder(file, rate) {
   // JPEG frames are full-range; convert to TV range so colours match the PNG path.
   const args = ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(rate), '-c:v', o.png ? 'png' : 'mjpeg', '-i', '-',
@@ -190,7 +206,9 @@ async function run() {
     await frameAt(page, times[2]);
     const b = await frameAt(page, times[0]);
     const c = await frameAt(page, times[0]);
-    const ok = a.equals(b) && b.equals(c);
+    // The first frame after load can differ by a level or two on a few pixels while the browser warms up, so
+    // compare decoded pixels with that tolerance rather than bytes.
+    const ok = await pixelsMatch(page, a, b) && await pixelsMatch(page, b, c);
     console.log(ok ? `deterministic: frame at ${times[0]}s identical after seeking away and back`
       : `NOT deterministic: frame at ${times[0]}s changed after seeking elsewhere. Look for Date.now, timers, rAF loops, CSS transitions or unseeded Math.random.`);
     if (page.__errors.length) console.log(`page errors:\n${page.__errors.join('\n')}`);

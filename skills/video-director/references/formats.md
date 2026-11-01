@@ -12,13 +12,14 @@ Every generated form below defaults to continuous composition (beats that transf
 | A song file and nothing else | Lyric video, visualizer, motion graphics |
 | The user's own clips or photos | Montage, social reel, trailer |
 | Screenshots or a product URL | Product promo, motion graphics, explainer |
-| A script, article or topic | Explainer, motion graphics, data story |
+| A script, article or topic | Knowledge short, explainer, data story |
+| One surprising idea, a paradox, or a link to a Douyin, Bilibili or Xiaohongshu knowledge video | Knowledge short, explainer, lesson |
 | A whole subject to teach, or "explain X from zero" | Lesson, explainer, data story |
 | Numbers, a CSV or a chart | Data story, explainer, motion graphics |
 | A story premise or characters | Animated short, 3D piece, trailer |
 | A reference video | The reference's own form first, then its two nearest neighbours |
 
-## The 13 forms
+## The 14 forms
 
 ### Motion graphics / kinetic type
 - **For users:** "Designed shapes, type and icons, animated."
@@ -35,6 +36,19 @@ Every generated form below defaults to continuous composition (beats that transf
 - **Default spec:** 16:9, 30 fps, 45–90 s; words as kinetic captions, no voice.
 - **Toolchain:** one `seek(t)` page with a continuous camera over a single evolving diagram or world, or Manim for math.
 - **Extra question:** "What's the one thing a viewer should understand by the end?"
+
+### Knowledge short
+- **For users:** "One surprising idea in 1–3 minutes: no voice, words on screen, a live simulation timed to the music."
+- **Needs:** the topic or one claim; the track, or a decision about it (see the extra question). If the user brings only a broad subject, offer 3–5 angles first, each built on a counterintuitive number, a news peg, a universal pain point or a famous name, and let them pick. Say which topics are worn out (the prisoner's dilemma, entropy and Murphy's law were already called overused in October 2026).
+- **Arc:** frame 1 shows the hook in big type, never a fade from black → a bet or guess the viewer makes, with a 2 s pause (the reveal comes after the bet) → historical anchor (the paper, person or year) → the title card on the first big musical accent, often 15–20 s in → the mechanism as a live simulation → a counterintuitive twist → a landing in everyday life → one line worth screenshotting, then sources. A turn, question or reveal every 10–15 s.
+- **One idea only.** If it needs two, it's two videos or a lesson.
+- **Settle the bet at full size.** Keep the viewer's guess on screen and strike it on the signature moment, big enough to see. A live number that swings and settles before the reveal turns the stamp into the end of a chase, not a new fact.
+- **The main device never leaves.** Charts grow out of the line or object the piece opened on. A new chart in a new frame is where these pieces turn into slides.
+- **The example is computed.** Trials, curves and counts come from a seeded script writing `assets/data/`, so every number on screen is real; a drawing that isn't exact carries a visible "schematic" label (示意图).
+- **Words:** in the final language, at most 20 characters a screen (`meta.max_caption_chars`), in a clear band at about 85–91% of the height; for a Chinese audience add an English second line (`sub`) if the user wants the bilingual look.
+- **Default spec:** 16:9 1920×1080 or 9:16 1080×1920, 30 fps, 2:00–2:45 (120–180 s earned the most likes in one scrape of 76 videos); no voice, constant motion, a sources card and a short disclaimer at the end.
+- **Toolchain:** one `seek(t)` page with `beats.py` on the track. Add a voice only if the user asks. Add generated shots only for at most 3 moments code can't draw (real people, real places), with spend approval and an "AI illustration" label.
+- **Extra question:** "Music: your own licensed track, composed in code, or a track from the platform's library added when you upload?" The viral tracks are copyrighted: never fetch or ship one. The platform-library route uses `audio.platform_music`.
 
 ### Lesson (chaptered explainer)
 - **For users:** "A whole topic taught from zero in short chapters, 3–10 minutes, each idea shown and heard rather than told."
@@ -133,5 +147,6 @@ Every generated form below defaults to continuous composition (beats that transf
 |---|---|---|---|
 | TikTok, Reels, Shorts | 9:16, 1080×1920 | 15–30 s default | Keep text and faces out of the bottom ~20% and the right-hand icon column |
 | YouTube | 16:9, 1920×1080 or 3840×2160 | Any | MP4, H.264 High, yuv420p, BT.709, 48 kHz AAC, fast start |
+| Douyin, Bilibili, Xiaohongshu | 16:9 1920×1080 or 9:16 1080×1920 | 1–3 min for knowledge shorts | Turn on the platform's AI-content declaration; hook readable on frame 1; check any campaign's title and tag rules on its topic page |
 | X, LinkedIn | 16:9 or 1:1 | ≤60 s | Captions burned in; many viewers watch muted |
 | Presentation or site | 16:9 | Any | Ask whether it should loop |

@@ -1,6 +1,6 @@
 ---
 name: "video-director"
-description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers and lessons, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, then shows five directions as keyframes and a story card so the user confirms what the video says. Builds it as code under a small render contract (any renderer, headless-browser frames plus ffmpeg, Blender for 3D, Python for music and sound), continuous by default with words on screen and a music bed, not slides read by a synthetic voice. Tuning notes become data edits and only changed segments re-render. An audience pass checks viewer value and a blind reviewer gives timecoded fixes. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
+description: "Director, editor and sound designer for making videos from loose inspiration: motion graphics, kinetic type, explainers, knowledge shorts and lessons, product promos, animated shorts, 3D pieces, lyric videos, trailers, visualizers and footage-based music edits (MAD/AMV, montages). Locks the format first, asks at most 3 easy questions with defaults, then shows five directions as keyframes and a story card so the user confirms what the video says. Builds it as code under a small render contract (any renderer, browser frames plus ffmpeg, Blender for 3D, Python for sound), continuous by default with words on screen and a music bed, not slides read by a synthetic voice. Tuning notes become data edits and only changed segments re-render. An audience pass checks viewer value and a blind reviewer gives timecoded fixes. Paid generation, downloads of others' media and publishing need the user's yes. Use when the user wants a video, animation, edit, reel, trailer or visualizer made or revised. Not for converting files."
 ---
 
 # Video Director
@@ -50,31 +50,33 @@ Every piece has a music bed unless the user says otherwise. Silence is a tool fo
 - Each direction names its music mood in one line; the score is first heard in the motion test or rough cut.
 - "No music" is a user decision, recorded as `audio.no_music` with their reason. A deliberate-extreme direction may propose silence; the final piece still asks.
 - **When the subject is sound or rhythm, the example is the soundtrack.** Put the content's own patterns in `audio.grooves` (presets such as `rock`, `funk`, `trap`, `dembow`, `seven-eight`, or custom lanes); `music.py` plays them in those windows instead of the bed and writes every hit to `audio/events.json`, which the page reads to draw what's heard. Never hand-place visuals that are meant to match a groove.
+- **Picture lands on what the music does.** On a track the user brings, run `beats.py`, put cuts on bar lines, and hit the title on the first big accent (`on_accent`), not at a round number.
+- **Never ship a viral track the user can't license.** If they want one the platform licenses in-app, set `audio.platform_music`: deliver effects only and they add the track at upload.
 - Mix and master to the platform target (−14 LUFS, −1 dBTP for web). Never lower the target to make a thin soundtrack pass QC.
 
 ## Sound effects: recorded, chosen by evidence
 
 You can't hear, so left alone you synthesize effects and judge them by their math; they come out thin and obviously fake. Prefer real recordings from Freesound (`lib/sfx.py`), picked the way a listener would, from what the people who did hear them left behind:
-- **Search plain English nouns for the source** ("cork pop", "paper slide", "camera shutter"), with `--max-dur` near the cue's length. Results are relevance pages re-ranked by downloads.
+- **Search one or two plain English nouns** ("cork pop", "bus door", "rubber stamp"), with `--max-dur` near the cue's length; three-word queries often return nothing. Results are relevance pages re-ranked by downloads.
 - **Rank on evidence and quote it** when you pick: downloads first, and the number of ratings over their average (★4.4(380) beats ★4.9(6)).
 - **Read the description as listening.** A named recorder and a clear source ("cork from a wine bottle, Zoom H5") mean you know what you'll get; "made with my mouth" or "phone mic" is lo-fi. Reject a clip whose source isn't the cue's, however popular.
-- **Measure before trusting a hit** (`sfx.py measure`): length, transient, how long it rings, where the energy sits. A popular "thud" can be a 3 s cinematic rumble. Cap a long ring with a layer's `len`.
+- **Measure before trusting a hit** (`sfx.py measure`): length, transient, how long it rings, where the energy sits. A popular "thud" can be a 3 s cinematic rumble. Cap a long ring with a layer's `len`, and skip a late transient's lead-in with `from`, or its room noise plays ahead of the picture.
 - **Layer for weight.** A cue's `sfx` can be a list: a recorded transient over a synthesized sub (`audio.py sfx subdrop`), each landing its transient on the cue.
 - **Licenses:** CC0 and CC BY only for anything that might be commercial; `get` refuses BY-NC and Sampling+ unless told the piece is non-commercial, converts to WAV and logs each clip with its credit in `licenses.json`.
 - Not every cue needs a sound; effects that hit every cue read as a toy. Spend them on the hook, the signature moment and real on-screen contacts.
-- Freesound needs a free API key, kept in one fixed place per user: `~/.config/video-director/freesound-key` (mode 600, outside every repo, so all projects share it). Check with `sfx.py key`. If there's none, ask once for the user to create one; save it with `sfx.py key --set` (reads stdin, never an argument, never printed), and meanwhile use `audio.py sfx` so nothing stalls. Offer `search --urls` when the user wants to audition candidates themselves.
+- Freesound needs a free API key, kept in one fixed place per user: `~/.config/video-director/freesound-key` (mode 600, outside every repo, so all projects share it). Check with `sfx.py key`. If there's none, ask once for the user to create one and run `python3 lib/sfx.py key --set` in their own terminal, rather than pasting it into chat; meanwhile use `audio.py sfx` so nothing stalls. Offer `search --urls` when the user wants to audition candidates themselves.
 
 ## References (load only what the current phase needs)
 
 | File | Load in | Contents |
 |---|---|---|
-| `references/formats.md` | Phase 1 | The 13 forms with user-facing one-liners, needs, story arcs, default specs and the one extra question each |
+| `references/formats.md` | Phase 1 | The 14 forms with user-facing one-liners, needs, story arcs, default specs and the one extra question each |
 | `references/styles.md` | Phases 2–3 | Style signatures with numeric rules and failure lists, plus the direction vocabulary |
 | `references/originality.md` | Phase 2, or when the user wants something more unusual | Seed strings, vocabulary draws, cross-domain imports, the deliberate extreme, subtraction and AI-video tells |
 | `references/spec-template.md` | Phases 2–3 | The story card, creative spec skeleton, `timeline.json` and `style.json` schemas, beat sheet and caption rules |
 | `references/pipeline.md` | Phases 0, 3, 4 | Project layout, the render contract, iteration and caching rules, Blender, footage and audio recipes, preflight |
 | `references/review.md` | Phases 2, 4, 5 | The audience pass and its personas, QC checks, the budgeted review pack, the 7-dimension rubric, the reviewer prompts and stop rule |
-| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `music.py`, `audio.py`, `sfx.py` (recorded SFX from Freesound), `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
+| `references/kit/` | Phase 0 (copied once) | Tools: `render.mjs` (renders any page meeting the contract), `timeline.py`, `music.py`, `audio.py`, `beats.py` (tempo and accents of a track), `sfx.py` (recorded SFX from Freesound), `qc.py`, `frames.py`; an optional shot runtime (`runtime.js`); two starters, `starter-onetake/` (hand-written one-take page) and `starter/` (shot modules) |
 
 If a reference is missing, keep going with the defaults in this file and say which one was missing.
 
@@ -85,14 +87,14 @@ If a reference is missing, keep going with the defaults in this file and say whi
 | 0 Intake (silent) | Read all inspiration. Sample frames from reference videos. Run preflight. Set up or reuse `video/`. | None |
 | 1 Brief card | One card, at most 3 questions | Seconds |
 | 2 Directions and story | Five directions as 3 keyframes each, plus the story card (what the video says), checked by the audience pass | Pick a look; approve or edit the story |
-| 3 Spec and build | Spec, timeline, key stills, motion, music and sound | None |
+| 3 Spec and build | Spec, timeline, key stills, motion, music and sound; the opening first on longer pieces | React to a 15-second sample, if there is one |
 | 4 Rough cut | Full length, low-res, with the audience pass's read. Required for pieces over 60 s and for anything that explains, argues or sells | Approve, or timestamped notes |
 | 5 Review loop | QC, fresh craft reviewer, revise, re-render, until the stop rule | None |
 | 6 Delivery | Best version, scorecard, credits, source project; one revision round offered | Approve or one note |
 
 ### 0 Intake
 
-- Read every link, file, song, script, screenshot and brand kit the user gave. For reference videos, look at a contact sheet, not the whole file (`frames.py sheet`).
+- Read every link, file, song, script, screenshot and brand kit the user gave. For reference videos, look at a contact sheet, not the whole file (`frames.py sheet`), and write down numbers rather than adjectives: background and accent hex values, vignette and grain, subtitle font, size, position and in/out timing, average shot length against the beat, and the composition zones. They become the reference-led direction's `style.json`.
 - **Preflight** once per machine and record the result in `video/preferences.md`. If a tool seems missing, check the user's login shell first (`$SHELL -lic 'command -v node ffmpeg'`): agent shells often skip `~/.zshrc`, and reinstalling what's there wastes time. Check: `ffmpeg -version` plus its encoders and filters (`libx264`, `drawtext`, `loudnorm`, `ebur128`), `node --version` (22+), Playwright's Chromium, `blender --version`, Python 3, a GPU check, the fonts the direction needs, and whether a Freesound key is set (`python3 lib/sfx.py key`). A missing tool gets one install command for the user to approve and a fallback route. Never stall.
 - **Set up `video/` once**: copy `references/kit/` to `video/lib/`, then `npm i -D playwright` in `video/`. Reuse preflight results and preferences; reuse components or recipes only for a series, a brand, or when asked.
 
@@ -123,6 +125,7 @@ Directions are shown as **keyframes, not videos**: rendering and checking a demo
 
 - Write `spec.md`, `timeline.json` and `style.json` from the template. The spec names an award-level bar with benchmark studios (qualities to aim for, never to copy), a beat sheet in seconds, exactly **one signature moment**, the style's numeric rules, and an avoid list.
 - Build in this order, checking each before the next: **key stills** at the hook, signature moment and end card (`render.mjs --at`), iterated until nothing looks generic; then **low-res motion** (`--scale 0.5 --step 2`); then **sound** on the same cue sheet; then the full render.
+- **Opening first.** For pieces over 60 s or anything that explains, argues or sells, render the first 10–15 s at full quality with sound before building the rest, and show it: the hook, the look and the sync are all judged there, at a fraction of a full render. Wait for a reaction, except in unattended runs.
 - Footage forms (MAD, montage, trailer) build a shot log and a cut list. 3D uses Blender scripts. Both follow `pipeline.md`.
 
 ### The render contract (the only hard rule)
@@ -136,7 +139,7 @@ Everything else in the kit is optional help, never a template. One renderer for 
 1. **Data for tuning, code for ideas.** After the direction is locked, move the values notes usually touch into data: timings and cues in `timeline.json`, copy and captions, palette and type. A tuning note ("faster", "warmer", "on the drop") becomes a data edit. A note about the idea or its impact is expected to change code; don't squeeze it into parameters.
 2. **One shared timeline for picture and sound.** Cues are named (`hook`, `drop`, `title`); both picture and sound read them, so retiming a cue moves both. Beat times are computed absolutely and rounded to a frame once (`timeline.py beats`).
 3. **Re-render the smallest thing that proves a fix:** a still (`--at`), a range (`--from/--to`), then the full render, which reuses unchanged segments.
-4. **Labeled versions.** Write each fix as "timecode → where → change", change nothing else, and commit each version (`git commit` in `video/`, media ignored), so `git diff` is the revision log and reverting is free.
+4. **Labeled versions.** Write each fix as "timecode → where → change", change nothing else, and commit each version (`git commit` in `video/`, media ignored), so `git diff` is the revision log and reverting is free. Copy each reviewed render to `renders/v<N>.mp4` before the next one overwrites it; the blind A/B needs both.
 5. **Keep big output out of context.** Scripts print one-line summaries. Look at frames through contact sheets and selected stills, never by reading many full-size files.
 6. **Reuse on request, not by default.** Reused components and recipes pull videos toward sameness. Start from `video/lib/components/` or `video/recipes/` for a series, a brand, or "like last time". After delivery, offer once to save what worked as a recipe.
 
@@ -159,9 +162,10 @@ Deliver the best version, not necessarily the last, with:
 - the scorecard (scores, and the note that an AI reviewed AI work), plus the fixes not made as "known weaknesses";
 - `licenses.json` and a generated `CREDITS.md`, with AI-generated elements labeled;
 - the source project path and how to re-render it (one command);
-- for footage edits, an OpenTimelineIO export a human editor can finish.
+- for footage edits, an OpenTimelineIO export a human editor can finish;
+- for anything going on a platform, the publish pack (`pipeline.md`): titles, tags, description with sources, cover and upload steps, including turning on the platform's AI-content declaration.
 
-Offer one revision round, and handle it under the code-first rules. Never claim award-level work; give the scores and let the user judge.
+Offer one revision round, and handle it under the code-first rules. If the idea is a simulation, offer once to turn the page into a playable web version; the code already exists. Never claim award-level work; give the scores and let the user judge.
 
 ## When the user wants something more unusual
 
@@ -202,9 +206,12 @@ Use roles, not model names: the strongest available model for the reviewer and f
 - **A slideshow with a voice reading it** is the commonest weak result. Rebuild it as one continuous piece with words on screen.
 - **Wrong form, beautiful execution** is the costliest failure. If a reaction mentions sources or structure rather than style, revisit the format.
 - **Generic defaults come back unless forbidden.** Fade-and-slide-up on everything, stock gradients and glows, lens flares, uniform easing, bouncy springs on serious type, music unrelated to the cuts, and default title fonts all need to be on the avoid list. If the user chose one, it's a decision, not a tell.
+- **The first frame is the hook.** A fade from black loses the viewer before the idea starts; `qc.py` warns on an empty frame 0.
+- **The model look.** Dark ground, glowing lines, particles and one electronic track have become a template. Make the look come from the subject, and pick angles that aren't worn out.
+- **Computed beats illustrated.** If a number can be simulated, simulate it with a seed. Viewers and fact checkers trust a real run, and a drawn curve can be wrong.
 - **Smooth 60 fps tweening kills handmade styles.** Frame rate is part of the style: on twos for hand-drawn, 12 fps steps for cut paper, 8–12 fps sprites for pixel art.
-- **Measure before promising a render time.** Time the first frames, extrapolate, and announce anything over ~10 minutes. For 3D, render one still before any sequence. Frames are captured as JPEG by default, about 5× faster than PNG on textured pages; use `--png` only for flat graphics that show artifacts.
-- **Don't game QC.** Fix what a check found or record why it's intended in `qc_allow`; never add motion, noise or a quieter loudness target just to make a check pass. Frozen-picture and missing-music findings are warnings for the reviewer, not failures.
+- **Measure before promising a render time.** Time the first frames, extrapolate, and announce anything over ~10 minutes. `render.mjs`'s printed estimate ran about 3× low on an 8-core CPU-only machine; allow for it. For 3D, render one still before any sequence. Frames are captured as JPEG by default, about 5× faster than PNG on textured pages; use `--png` only for flat graphics that show artifacts.
+- **Don't game QC.** Fix what a check found or record why it's intended in `qc_allow`; never add motion, noise or a quieter loudness target just to make a check pass. Frozen-picture, static-share, first-frame and missing-music findings are warnings for the reviewer, not failures. Static share measures whole-frame change, so a small moving object counts as static and a slow drift of the whole sheet zeroes it; the drift adds nothing and can look wrong, so read the number, don't chase it.
 - **Caption density.** At most 3 live lines on screen, older lines dimmed, at least 44 px at 1080p for phone viewers, and reading speed within `timeline.py check` (about 9 CJK or 17 Latin characters per second).
 - **Fonts fail silently.** Bundle font files in `assets/fonts/` with `@font-face`; `render.mjs` refuses to render when a declared font didn't load.
 - **HTML `video` elements don't seek frame-accurately.** Footage cuts go through ffmpeg, not the page.
@@ -215,14 +222,16 @@ Use roles, not model names: the strongest available model for the reviewer and f
 
 ## Facts as of 2026-10 (re-verify before relying on them; update the date when you do)
 
-- **Claude vision:** no video input; animated GIFs show only the first frame. Up to 600 images per request, and at most 2,000 px per side when a request has more than 20. A 1920×1080 frame costs about 2,691 tokens; Opus 5.5 input is $4 per million tokens.
+- **Claude vision:** no video input; animated GIFs show only the first frame. Up to 600 images per request, and at most 2,000 px per side when a request has more than 20. A 1920×1080 frame costs about 2,691 tokens; Opus 5.5 input is 4 USD per million tokens.
 - **Claude Code:** subagents start with fresh context; forks inherit the parent conversation.
 - **HyperFrames** (HeyGen): Apache-2.0, HTML/CSS/GSAP scenes, Node 22+ and FFmpeg, installs as a Claude Code plugin (`heygen-com/hyperframes`).
-- **Remotion:** free for individuals and companies of up to 3 people, counting the whole company. Paid: $25/month per developer including agent use, or $0.01 per render with a $100/month minimum. Official agent skills: `npx skills add remotion-dev/skills`.
+- **Remotion:** free for individuals and companies of up to 3 people, counting the whole company. Paid: 25 USD/month per developer including agent use, or 0.01 USD per render with a 100 USD/month minimum. Official agent skills: `npx skills add remotion-dev/skills`.
 - **Headless Chromium WebGL:** without a GPU only SwiftShader works, and it's slow; recent Chromium needs `--enable-unsafe-swiftshader` for it.
 - **Blender headless:** Cycles is the safe engine; Eevee needs an OpenGL context; scenes with Grease Pencil have aborted in background renders. Re-check on the installed version.
-- **Generative video:** roughly $0.05–0.75 per second depending on model and resolution (Veo 3.1, Kling 3.0, Runway Gen-4.5); the Sora API was reported to end on 2026-09-24.
+- **Generative video:** roughly 0.05–0.75 USD per second depending on model and resolution (Veo 3.1, Kling 3.0, Runway Gen-4.5); the Sora API was reported to end on 2026-09-24.
 - **Freesound API:** free token key from freesound.org/apiv2/apply, sent as `Authorization: Token`; search returns `num_downloads`, `avg_rating`, `num_ratings`, `description` and license URLs; HQ previews are ~128 kbps mp3 and need only the token, originals need OAuth2. Requests are throttled per user (HTTP 429), and downloads are slow on some networks.
 - **Audio licenses:** VSCO-2 CE is CC0; Salamander Grand Piano is CC BY 3.0; Beat This! is MIT; madmom's models are CC BY-NC-SA; MusicGen weights are non-commercial; Kokoro TTS is Apache-2.0; ACE-Step is reported Apache-2.0. Eleven Music is marketed as cleared for commercial use; check plan exclusions.
 - **Delivery:** YouTube recommends MP4 with fast start, H.264 High, 4:2:0, BT.709 and 48 kHz AAC. Web loudness working target is about −14 LUFS and −1 dBTP; no social platform publishes an official target. Broadcast is −23 LUFS (EBU R128).
+- **Knowledge shorts (#vibe知识大赏, reported October 2026, secondhand):** a Douyin topic with about 1.2 billion plays that spread to Bilibili and Xiaohongshu; top videos are code-drawn, voiceless and 2–3 minutes. The common tracks (a *We Never* remix, 《千年之后》) are copyrighted. Campaign rules come from tutorials, not the official page.
+- **AI labeling in China:** the Measures for Labeling AI-Generated Synthetic Content took effect on 2025-09-01; users publishing such content must declare it and use the platform's labeling function.
 - **Rights:** YouTube's Terms forbid downloading without permission; Content ID claims (block, monetize or track) are the usual outcome for fan edits. US guidance says prompts alone are unlikely to make output copyrightable.

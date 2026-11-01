@@ -78,6 +78,10 @@ class ValidateSkillsTest(unittest.TestCase):
         (repo / "skills" / "my-skill" / "references" / "style.md").write_text("x", encoding="utf-8")
         self.assertEqual(validate_skills.validate_repo(repo), [])
 
+    def test_dollar_digit_in_body_fails(self):
+        repo = make_repo(self.tmp, {"my-skill": GOOD.format(name="my-skill") + "It costs $4 a month.\n"})
+        self.assertTrue(any("'$4'" in p for p in validate_skills.validate_repo(repo)))
+
     def test_marketplace_must_list_every_skill(self):
         market = {"name": "m", "owner": {"name": "x"}, "plugins": [{"name": "a", "source": "./", "skills": ["./skills/a"]}]}
         repo = make_repo(self.tmp, {"a": GOOD.format(name="a"), "b": GOOD.format(name="b")}, market)

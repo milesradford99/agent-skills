@@ -31,6 +31,13 @@ MAX_CPS_LATIN = 17.0
 KINDS = {"hook", "signature", "title", "end", "hit", "plain"}
 
 
+def read_seconds(text: str) -> float:
+    """Seconds a viewer needs to read a caption line."""
+    cjk = len(CJK_RE.findall(text))
+    latin = len(re.sub(r"\s", "", text)) - cjk
+    return cjk / MAX_CPS_CJK + latin / MAX_CPS_LATIN
+
+
 def beat_grid(bpm: float, fps: float, offset: float = 0.0, count: int = 32, per_bar: int = 4) -> list[dict]:
     beat = 60.0 / bpm
     out = []
@@ -45,6 +52,17 @@ def nearest_beat_error(t: float, bpm: float, offset: float) -> float:
     beat = 60.0 / bpm
     n = round((t - offset) / beat)
     return abs(t - (offset + n * beat))
+
+
+def load_accents(project_dir: Path | None, audio: dict) -> list[float] | None:
+    """Accent times from beats.py's output; None when there's no file to read."""
+    if project_dir is None:
+        return None
+    try:
+        data = json.loads((project_dir / audio.get("beats", "audio/beats.json")).read_text(encoding="utf-8"))
+        return [a["t"] for a in data.get("accents", [])]
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
 
 
 def licensed(project_dir: Path) -> set[str]:
@@ -101,6 +119,7 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
     for cid in {i for i in cue_ids if cue_ids.count(i) > 1}:
         errors.append(f"cue id '{cid}' is used more than once")
     audio = tl.get("audio", {})
+    accents = load_accents(project_dir, audio)
     for c in cues:
         t = c.get("t")
         if t is None or not 0 <= t <= duration:
@@ -116,6 +135,12 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
                 err = nearest_beat_error(t, audio["bpm"], audio.get("offset", 0.0))
                 if err > frame + 1e-9:
                     errors.append(f"cue '{c['id']}' at {t:g}s is {err * fps:.1f} frames off the beat grid")
+        if c.get("on_accent"):
+            if accents is None:
+                errors.append(f"cue '{c['id']}' is on_accent but {audio.get('beats', 'audio/beats.json')} is missing (run beats.py)")
+            elif not any(abs(t - a) <= max(frame, 0.03) + 1e-9 for a in accents):
+                near = min(accents, key=lambda a: abs(t - a), default=None)
+                errors.append(f"cue '{c['id']}' at {t:g}s is off the accents" + (f"; nearest is {near:g}s" if near is not None else ""))
         raw = c.get("sfx")
         for layer in (raw if isinstance(raw, list) else [raw] if raw else []):
             path = layer.get("path") if isinstance(layer, dict) else layer
@@ -139,11 +164,14 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
         if start is None or end is None or end <= start:
             errors.append(f"caption {i} needs start < end")
             continue
-        cjk = len(CJK_RE.findall(text))
-        latin = len(re.sub(r"\s", "", text)) - cjk
-        rate = cjk / MAX_CPS_CJK + latin / MAX_CPS_LATIN  # seconds needed to read it
+        # A bilingual caption carries its second line in "sub"; viewers read one line, so the slower one counts.
+        rate = max(read_seconds(text), read_seconds(c.get("sub", "")))
         if rate > (end - start) + 1e-9:
             warnings.append(f"caption {i} at {start:g}s needs ~{rate:.1f}s to read but is on for {end - start:.1f}s")
+        limit = tl.get("meta", {}).get("max_caption_chars")
+        size = len(re.sub(r"\s", "", text))
+        if limit and size > limit:
+            warnings.append(f"caption {i} at {start:g}s has {size} characters on one screen (limit {limit}); split it")
 
     chapters = tl.get("chapters", [])
     starts = [c.get("start") for c in chapters]
@@ -158,7 +186,7 @@ def check(tl: dict, project_dir: Path | None = None) -> tuple[list[str], list[st
         except ValueError as e:
             errors.append(str(e))
 
-    if not audio.get("music") and not audio.get("no_music"):
+    if not audio.get("music") and not audio.get("no_music") and not audio.get("platform_music"):
         warnings.append("no music bed: set audio.music (lib/music.py composes one), "
                         "or audio.no_music with the user's reason")
 
