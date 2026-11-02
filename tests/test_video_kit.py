@@ -269,6 +269,8 @@ class BeatsTest(unittest.TestCase):
         return x
 
     def test_finds_tempo_grid_and_the_first_big_accent(self):
+        if beats.np is None:
+            self.skipTest("numpy not installed")
         result = beats.analyze(self.track(78, 0.41, 17.1), fps=30)
         self.assertAlmostEqual(result["bpm"], 78, delta=0.1)
         self.assertAlmostEqual(result["offset"], 0.41, delta=0.02)
@@ -277,6 +279,8 @@ class BeatsTest(unittest.TestCase):
         self.assertEqual(result["accents"][0]["frame"], round(result["accents"][0]["t"] * 30))
 
     def test_composed_score_is_read_on_the_beat_not_the_off_beat(self):
+        if beats.np is None:
+            self.skipTest("numpy not installed")
         tl_ = {"meta": {"duration": 30, "fps": 30}, "audio": {"bpm": 90},
                "cues": [{"id": "hook", "t": 0.4, "kind": "hook"}, {"id": "signature", "t": 20, "kind": "signature"}]}
         np = beats.np
