@@ -29,7 +29,7 @@ AI assistance is welcome. These skills were written with it. In return:
 
 ## Making a change
 
-1. Edit the skill under `skills/<name>/SKILL.md`.
+1. Edit the skill under `skills/<name>/SKILL.md`, and its `references/` files if it has them.
 2. Run the checks:
 
    ```sh

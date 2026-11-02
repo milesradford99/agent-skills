@@ -1,0 +1,9 @@
+node_modules/
+*/renders/
+*/media/
+*/audio/**/*.wav
+*/audio/**/*.mp3
+*/assets/plates/
+.sfx-index.json
+.env*
+*.local.*

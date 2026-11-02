@@ -20,6 +20,8 @@ NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 NAME_MAX = 64
 DESCRIPTION_MAX = 1024
 RESERVED_WORDS = ("anthropic", "claude")
+REFERENCE_RE = re.compile(r"`(references/[^`\s]+)`")
+ARGUMENT_RE = re.compile(r"\$\d+")  # skill loaders treat $0, $1 ... as positional arguments
 
 
 def parse_frontmatter(text: str) -> tuple[dict[str, str], str] | None:
@@ -86,6 +88,11 @@ def check_skill(skill_dir: Path) -> list[str]:
 
     if not body.strip():
         problems.append(f"{skill_md}: has no instructions after the frontmatter")
+    for match in sorted(set(ARGUMENT_RE.findall(body))):
+        problems.append(f"{skill_md}: '{match}' is replaced with an argument when the skill loads; write the amount another way")
+    for ref in sorted(set(REFERENCE_RE.findall(body))):
+        if not (skill_dir / ref).exists():
+            problems.append(f"{skill_md}: mentions '{ref}', which doesn't exist")
     return problems
 
 

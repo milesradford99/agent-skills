@@ -1,0 +1,16 @@
+{
+  "meta": { "title": "One take", "width": 1920, "height": 1080, "fps": 30, "duration": 6.0, "seed": "replace-with-a-random-string", "background": "#0e0f12" },
+  "audio": { "bpm": 120, "offset": 0.0, "music": "audio/music.wav", "mood": "warm", "music_gain_db": -4, "out": "audio/mix.wav", "lufs": -14, "true_peak": -1 },
+  "shots": [ { "id": "world", "start": 0.0, "end": 6.0 } ],
+  "cues": [
+    { "id": "hook", "t": 0.5, "kind": "hook", "sfx": "audio/sfx/click.wav", "gain_db": -6, "on_beat": true },
+    { "id": "bend", "t": 2.0, "kind": "hit", "sfx": "audio/sfx/whoosh.wav", "gain_db": -10, "on_beat": true },
+    { "id": "signature", "t": 4.0, "kind": "signature", "sfx": "audio/sfx/impact.wav", "gain_db": -3, "on_beat": true }
+  ],
+  "captions": [
+    { "start": 0.5, "end": 1.9, "text": "Start with a line." },
+    { "start": 2.0, "end": 3.9, "text": "Let it bend into a shape." },
+    { "start": 4.0, "end": 5.4, "text": "Then let it open." }
+  ],
+  "qc_allow": []
+}
