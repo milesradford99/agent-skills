@@ -1,6 +1,6 @@
 {
   "name": "milesradford-skills",
-  "description": "Skills for building and maintaining open-source projects, making videos, and reading China's A-share rescue cycle with an AI agent.",
+  "description": "Skills for building and maintaining open-source projects, making videos, reading China's A-share rescue cycle, and keeping an AI agent going when it gets stuck.",
   "owner": {
     "name": "MilesRadford",
     "url": "https://github.com/milesradford99"
@@ -49,6 +49,17 @@
       "category": "research",
       "tags": ["china", "a-shares", "market-analysis", "policy", "research"],
       "skills": ["./skills/rescue-a-stock"]
+    },
+    {
+      "name": "proactive-skill",
+      "source": "./",
+      "strict": false,
+      "description": "Keeps an agent pushing when it stalls or when you say keep trying: distinct plans instead of retries, visible progress, evidence before giving up, and hard lines that persistence can't cross.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["persistence", "problem-solving", "debugging", "agent-behavior"],
+      "skills": ["./skills/proactive-skill"]
     }
   ]
 }

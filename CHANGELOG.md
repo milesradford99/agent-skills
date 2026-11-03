@@ -6,6 +6,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Added
 
+- `proactive-skill` 0.1.0: keeps an agent pushing when it feels unable to continue or when the user says keep trying. Ten rules for getting things done, adapted from advice for people to agents: a ledger of attempts, distinct plans instead of retries, visible progress, and a short evidence report before stopping. Hard lines keep persistence from turning into faked results or routing around a refusal.
 - `rescue-a-stock` 0.1.0: reads where China's A-share market stands in the state rescue and clearing cycle. It collects live data with a standard-library tool, classifies interventions by who pays, sets a stage per segment with rule-based confidence caps, and explains the reading as a causal chain with a test for every link. Includes a playbook of base rates from a study of 64 interventions across eight cycles, and dated facts (verified 2026-11). It gives no trade advice.
 - `oss-mentor`: maintainer-partner skill with safety rules, decision rights, hobby/serious/org profiles, phase diagnosis, an upstream-contribution playbook and dated platform facts (verified 2026-10).
 - `oss-design`: tiered product, tech and UI/UX design skill with convention-first guidance, drawn-theme variety, blind pairwise critique, a fresh-agent first-success test and accessibility gates.
