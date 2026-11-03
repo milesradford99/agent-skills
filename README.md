@@ -1,6 +1,6 @@
 # agent-skills
 
-Skills for building open-source software, making videos, and reading China's A-share rescue cycle with an AI coding agent. They stay useful as models get stronger because they encode judgment, safety lines and proportion, not tips the model already knows.
+Skills for building open-source software, making videos, reading China's A-share rescue cycle, and keeping an AI coding agent going when it gets stuck. They stay useful as models get stronger because they encode judgment, safety lines and proportion, not tips the model already knows.
 
 | Skill | What it does | Use it when |
 |---|---|---|
@@ -8,6 +8,7 @@ Skills for building open-source software, making videos, and reading China's A-s
 | [`oss-design`](skills/oss-design/SKILL.md) | Product, tech and UI/UX design that is conventional where users expect it and distinctive where it counts. Picks a depth tier, lets you steer by reacting to options, and tests with a fresh agent and a blind critic. | Designing a feature, a public API or architecture, a CLI's ergonomics, a UI flow, or launch visuals |
 | [`video-director`](skills/video-director/SKILL.md) | Turns loose inspiration into a finished video. It locks the format first, asks you at most 3 easy questions and shows five directions as keyframes to react to, with a story card to confirm what it says. It builds the video as code in whatever renderer the idea needs, continuous by default with words on screen instead of slides and a synthetic voice. Tuning notes become small data edits, and only changed segments re-render. A blind reviewer loop runs before delivery. | Making motion graphics, explainers, knowledge shorts, promos, animated shorts, lyric videos, trailers, visualizers or music edits from a song, a link or an idea |
 | [`rescue-a-stock`](skills/rescue-a-stock/SKILL.md) | Reads where China's A-share market stands in the state rescue and clearing cycle. It pulls live index, leverage and ETF data, classifies each intervention by who pays, sets a stage per market segment with rule-based confidence, and explains it as a causal chain with a test for every link. Analysis only: it gives no trade advice. | Asking whether a policy or market bottom is in, whether the National Team is really buying, what a meeting means, or what would trigger the next rescue |
+| [`proactive-skill`](skills/proactive-skill/SKILL.md) | Keeps an agent pushing when the work stalls. It keeps a ledger of attempts, finds what really decides the outcome, works through distinct plans instead of retrying one, and stops only with evidence and a clear ask. It won't fake a result or route around a refusal. | The agent is stuck or about to give up, or you tell it to keep trying |
 
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
@@ -28,6 +29,7 @@ Skills for building open-source software, making videos, and reading China's A-s
 /plugin install oss-design@milesradford-skills
 /plugin install video-director@milesradford-skills
 /plugin install rescue-a-stock@milesradford-skills
+/plugin install proactive-skill@milesradford-skills
 ```
 
 Each skill installs as its own plugin, so you can take one without the other.
@@ -38,7 +40,7 @@ Copy the skill folder into your agent's skills directory. For Claude Code that's
 
 ```sh
 git clone https://github.com/milesradford99/agent-skills
-cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock ~/.claude/skills/
+cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/proactive-skill ~/.claude/skills/
 ```
 
 ### Claude app
@@ -54,10 +56,11 @@ In a repo of yours, ask your agent:
 - "Design the `--json` output for this CLI." (`oss-design`, Tier 1)
 - "Make a 20-second launch video for this app from these screenshots." (`video-director`)
 - "Where are A-shares in the clearing cycle right now, and how sure are you?" (`rescue-a-stock`)
+- "Keep trying, there has to be a way to get this build passing." (`proactive-skill`)
 
 ## How these were built
 
-`oss-mentor` and `oss-design` were drafted with Claude, then reviewed by five independent agents (runtime mechanics, security red team, skeptical OSS maintainer, product and design strategy, fact-check against current docs) and re-verified by a sixth. [`docs/EVALS.md`](docs/EVALS.md) lists the scenarios used to compare them against an agent with no skill. `video-director` was built from a deep-research report on agentic video production, and `rescue-a-stock` from a deep-research study of 64 Chinese market interventions; neither has had that multi-agent review yet. A human maintainer reviews and owns every change.
+`oss-mentor` and `oss-design` were drafted with Claude, then reviewed by five independent agents (runtime mechanics, security red team, skeptical OSS maintainer, product and design strategy, fact-check against current docs) and re-verified by a sixth. [`docs/EVALS.md`](docs/EVALS.md) lists the scenarios used to compare them against an agent with no skill. `video-director` was built from a deep-research report on agentic video production, and `rescue-a-stock` from a deep-research study of 64 Chinese market interventions; neither has had that multi-agent review yet. `proactive-skill` adapts a list of rules for pushing projects through big companies to agents, and hasn't had that review or an eval run either. A human maintainer reviews and owns every change.
 
 Product facts in the skills are dated (October 2026) and the skills tell the agent to re-check them before relying on them.
 
