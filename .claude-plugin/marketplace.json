@@ -55,7 +55,7 @@
       "source": "./",
       "strict": false,
       "description": "Values any listed stock with the closed-form DCF from 穿透叙事: reverses the price into the implied earnings ceiling, or turns a judged ceiling and discount rate into a fair forward PE and value. Analysis, not investment advice.",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "license": "MIT",
       "category": "research",
       "tags": ["valuation", "dcf", "a-shares", "equity-research", "finance"],
