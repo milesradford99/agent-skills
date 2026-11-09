@@ -8,6 +8,7 @@ Skills for building open-source software, making videos, and reading China's A-s
 | [`oss-design`](skills/oss-design/SKILL.md) | Product, tech and UI/UX design that is conventional where users expect it and distinctive where it counts. Picks a depth tier, lets you steer by reacting to options, and tests with a fresh agent and a blind critic. | Designing a feature, a public API or architecture, a CLI's ergonomics, a UI flow, or launch visuals |
 | [`video-director`](skills/video-director/SKILL.md) | Turns loose inspiration into a finished video. It locks the format first, asks you at most 3 easy questions and shows five directions as keyframes to react to, with a story card to confirm what it says. It builds the video as code in whatever renderer the idea needs, continuous by default with words on screen instead of slides and a synthetic voice. Tuning notes become small data edits, and only changed segments re-render. A blind reviewer loop runs before delivery. | Making motion graphics, explainers, knowledge shorts, promos, animated shorts, lyric videos, trailers, visualizers or music edits from a song, a link or an idea |
 | [`rescue-a-stock`](skills/rescue-a-stock/SKILL.md) | Reads where China's A-share market stands in the state rescue and clearing cycle. It pulls live index, leverage and ETF data, classifies each intervention by who pays, sets a stage per market segment with rule-based confidence, and explains it as a causal chain with a test for every link. Analysis only: it gives no trade advice. | Asking whether a policy or market bottom is in, whether the National Team is really buying, what a meeting means, or what would trigger the next rescue |
+| [`narrative-dcf-valuation`](skills/narrative-dcf-valuation/SKILL.md) | Values any listed stock with the closed-form DCF from the book 穿透叙事 (Zou Peixuan, 2026). It reverses the price into the implied earnings ceiling, turns a judged ceiling and discount rate into a fair forward PE and value, and says whether remaining upside is alpha or beta. Its calculator reproduces the book's tables exactly. Analysis only: it gives no trade advice. | Asking what a stock's price implies, what a fair PE or value is, or anything about 业绩天花板, 隐含预期 or 叙事估值 |
 
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
@@ -28,6 +29,7 @@ Skills for building open-source software, making videos, and reading China's A-s
 /plugin install oss-design@milesradford-skills
 /plugin install video-director@milesradford-skills
 /plugin install rescue-a-stock@milesradford-skills
+/plugin install narrative-dcf-valuation@milesradford-skills
 ```
 
 Each skill installs as its own plugin, so you can take one without the other.
@@ -38,7 +40,7 @@ Copy the skill folder into your agent's skills directory. For Claude Code that's
 
 ```sh
 git clone https://github.com/milesradford99/agent-skills
-cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock ~/.claude/skills/
+cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/narrative-dcf-valuation ~/.claude/skills/
 ```
 
 ### Claude app
@@ -54,6 +56,7 @@ In a repo of yours, ask your agent:
 - "Design the `--json` output for this CLI." (`oss-design`, Tier 1)
 - "Make a 20-second launch video for this app from these screenshots." (`video-director`)
 - "Where are A-shares in the clearing cycle right now, and how sure are you?" (`rescue-a-stock`)
+- "长江电力现在的股价隐含了什么业绩天花板？" (`narrative-dcf-valuation`)
 
 ## How these were built
 
