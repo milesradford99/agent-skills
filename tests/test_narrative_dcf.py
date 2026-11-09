@@ -62,6 +62,17 @@ class InverseTest(unittest.TestCase):
             nd.V_geo(2, 0.05, 10, 0.05)
 
 
+class RebasedTest(unittest.TestCase):
+    def test_flat_from_next_year_is_ten_times_at_r10(self):
+        # E1 forever from year 1: value = E1/r
+        self.assertAlmostEqual(nd.rebased_value(300, 300, 0.10), 3000, delta=1e-6)
+
+    def test_implied_terminal_round_trips(self):
+        for T in (280, 550, 760):
+            v = nd.rebased_value(T, 300, 0.10)
+            self.assertAlmostEqual(nd.implied_terminal_rebased(v, 300, 0.10), T, delta=1e-3)
+
+
 class AuctionTest(unittest.TestCase):
     def test_half_capacity_clears_at_mean(self):
         self.assertAlmostEqual(nd.auction_price(10, 3, 50, 100), 10, places=9)
