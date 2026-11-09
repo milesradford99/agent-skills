@@ -6,6 +6,7 @@
 模型B（当前无业绩，等差）: E_t = M*t/n, t=1..n；之后恒为 M。
   K = P/M = (1/n)*Σ t/(1+r)^t + 1/(r(1+r)^n)
 拍卖机制: y = μ + σ·Φ⁻¹(1 - s/x)
+重定基期（第 9 步的主口径；scenarios 模式即用它）: P = E1·(1 + V(T/E1)) / (1+r)，T 为终局利润
 """
 import argparse, json, math
 from statistics import NormalDist
@@ -37,6 +38,13 @@ def implied_m_from_pe1(pe, r, n=10, g=0.0):
 def implied_r_from_pe1(pe, m, n=10):
     return solve(lambda r: -pe1(m, r, n), -pe, 0.005, 1.0)
 
+def rebased_value(T, e1, r, n=10, g=0.0):
+    """以下一年为新起点：第1年末拿到 E1，并持有此后现金流的价值 V·E1。"""
+    return e1 * (1 + V_geo(T / e1, r, n, g)) / (1 + r)
+
+def implied_terminal_rebased(mcap, e1, r, n=10, g=0.0):
+    return solve(lambda T: rebased_value(T, e1, r, n, g), mcap, e1 * 1e-3, e1 * 1e3)
+
 def auction_price(mu, sigma, s, x):
     if not 0 < s < x: raise ValueError("要求 0 < 流通市值容量 s < 关注资金 x")
     return mu + sigma * NormalDist().inv_cdf(1 - s / x)
@@ -50,7 +58,7 @@ def tables():
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("mode", choices=["tables", "implied", "fair", "nonprofit", "auction", "sens"])
+    p.add_argument("mode", choices=["tables", "implied", "fair", "nonprofit", "auction", "sens", "rebased", "scenarios"])
     p.add_argument("--pe1", type=float, help="动态PE = 市值/下一财年净利润(一致预期)")
     p.add_argument("--mcap", type=float); p.add_argument("--e0", type=float, help="当年净利润")
     p.add_argument("--e1", type=float, help="下一年净利润")
@@ -60,6 +68,8 @@ def main():
     p.add_argument("--g", type=float, default=0.0)
     p.add_argument("--mu", type=float); p.add_argument("--sigma", type=float)
     p.add_argument("--s", type=float); p.add_argument("--x", type=float)
+    p.add_argument("--T", type=float, help="终局利润（rebased 模式）")
+    p.add_argument("--cases", help="scenarios 模式：名称:终局利润:概率,... 例 悲观:280:0.15,中性:550:0.45")
     a = p.parse_args(); out = {}
     if a.mode == "tables": return tables()
     if a.mode == "implied":
@@ -71,7 +81,12 @@ def main():
     elif a.mode == "fair":
         out = {"m": a.m, "r": a.r, "n": a.n, "g": a.g, "fair_PE1": pe1(a.m, a.r, a.n, a.g),
                "V=P/E0": V_geo(a.m, a.r, a.n, a.g)}
-        if a.e1: out["fair_mcap"] = out["fair_PE1"] * a.e1          # 首选：书中口径，对 n 不敏感
+        if a.e1:
+            out["fair_mcap"] = out["fair_PE1"] * a.e1                # 仅当 E1/E0 接近匀速增长时作主值
+            out["effective_terminal"] = a.m ** ((a.n - 1) / a.n) * a.e1  # PE1×E1 实际隐含的终局利润
+            if a.e0:
+                out["uniform_E1"] = a.e0 * a.m ** (1 / a.n)
+                out["E1_vs_uniform"] = a.e1 / out["uniform_E1"] - 1   # 绝对值超过 5% → 改用 scenarios/rebased
         elif a.e0: out["fair_mcap"] = out["V=P/E0"] * a.e0           # 无 E1 时退而求其次，对 n 较敏感
         if "fair_mcap" in out and a.mcap: out["upside"] = out["fair_mcap"] / a.mcap - 1
     elif a.mode == "nonprofit":
@@ -83,6 +98,23 @@ def main():
     elif a.mode == "sens":
         ms = [0.3, 0.5, 0.7, 1, 1.5, 2, 3, 5, 10, 20]; rs = [.08, .09, .10, .11, .12]
         out = {f"r={r:.0%}": {m: round(pe1(m, r, a.n, a.g), 1) for m in ms} for r in rs}
+    elif a.mode == "rebased":
+        out = {"r": a.r, "n": a.n, "implied_terminal": implied_terminal_rebased(a.mcap, a.e1, a.r, a.n, a.g)}
+        out["implied_m_vs_E1"] = out["implied_terminal"] / a.e1
+        out["implied_terminal_by_n"] = {n: round(implied_terminal_rebased(a.mcap, a.e1, a.r, n, a.g), 1) for n in (5, 8, 10, 12, 15)}
+        if a.T:
+            out["fair_mcap"] = rebased_value(a.T, a.e1, a.r, a.n, a.g)
+            out["upside"] = out["fair_mcap"] / a.mcap - 1
+    elif a.mode == "scenarios":
+        cases = [(c.split(":")[0], float(c.split(":")[1]), float(c.split(":")[2])) for c in a.cases.split(",")]
+        if abs(sum(p_ for _, _, p_ in cases) - 1) > 1e-6: raise ValueError("概率之和必须为 1")
+        rows = {}
+        for name, T, prob in cases:
+            v = rebased_value(T, a.e1, a.r, a.n, a.g)
+            rows[name] = {"terminal": T, "m_vs_E1": round(T / a.e1, 3), "prob": prob, "fair_mcap": round(v, 1), "vs_price": round(v / a.mcap - 1, 4)}
+        w = sum(prob * rebased_value(T, a.e1, a.r, a.n, a.g) for _, T, prob in cases)
+        out = {"r": a.r, "cases": rows, "weighted_mcap": w, "weighted_vs_price": w / a.mcap - 1,
+               "implied_terminal_at_price": implied_terminal_rebased(a.mcap, a.e1, a.r, a.n, a.g)}
     rd = lambda o: {k: rd(v) for k, v in o.items()} if isinstance(o, dict) else (round(o, 4) if isinstance(o, float) else o)
     print(json.dumps(rd(out), ensure_ascii=False, indent=2))
 
