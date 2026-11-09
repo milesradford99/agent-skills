@@ -6,7 +6,7 @@
 模型B（当前无业绩，等差）: E_t = M*t/n, t=1..n；之后恒为 M。
   K = P/M = (1/n)*Σ t/(1+r)^t + 1/(r(1+r)^n)
 拍卖机制: y = μ + σ·Φ⁻¹(1 - s/x)
-重定基期（E0→E1 跳增远超匀速时）: P = E1·(1 + V(T/E1)) / (1+r)，T 为终局利润
+重定基期（第 9 步的主口径；scenarios 模式即用它）: P = E1·(1 + V(T/E1)) / (1+r)，T 为终局利润
 """
 import argparse, json, math
 from statistics import NormalDist
@@ -81,7 +81,12 @@ def main():
     elif a.mode == "fair":
         out = {"m": a.m, "r": a.r, "n": a.n, "g": a.g, "fair_PE1": pe1(a.m, a.r, a.n, a.g),
                "V=P/E0": V_geo(a.m, a.r, a.n, a.g)}
-        if a.e1: out["fair_mcap"] = out["fair_PE1"] * a.e1          # 首选：书中口径，对 n 不敏感
+        if a.e1:
+            out["fair_mcap"] = out["fair_PE1"] * a.e1                # 仅当 E1/E0 接近匀速增长时作主值
+            out["effective_terminal"] = a.m ** ((a.n - 1) / a.n) * a.e1  # PE1×E1 实际隐含的终局利润
+            if a.e0:
+                out["uniform_E1"] = a.e0 * a.m ** (1 / a.n)
+                out["E1_vs_uniform"] = a.e1 / out["uniform_E1"] - 1   # 绝对值超过 5% → 改用 scenarios/rebased
         elif a.e0: out["fair_mcap"] = out["V=P/E0"] * a.e0           # 无 E1 时退而求其次，对 n 较敏感
         if "fair_mcap" in out and a.mcap: out["upside"] = out["fair_mcap"] / a.mcap - 1
     elif a.mode == "nonprofit":
