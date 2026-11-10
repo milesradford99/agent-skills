@@ -1,6 +1,6 @@
 {
   "name": "milesradford-skills",
-  "description": "Skills for building and maintaining open-source projects, making videos, and reading China's A-share rescue cycle with an AI agent.",
+  "description": "Skills for building and maintaining open-source projects, making videos, writing Douyin finance scripts, and reading China's A-share rescue cycle with an AI agent.",
   "owner": {
     "name": "MilesRadford",
     "url": "https://github.com/milesradford99"
@@ -60,6 +60,17 @@
       "category": "research",
       "tags": ["valuation", "dcf", "a-shares", "equity-research", "finance"],
       "skills": ["./skills/narrative-dcf-valuation"]
+    },
+    {
+      "name": "douyin-finance-koubo",
+      "source": "./",
+      "strict": false,
+      "description": "Writes Douyin finance and business 口播 scripts that leave viewers with a reusable takeaway, hold them to the end, earn the follow and sound spoken: increment research, an insight bar, retention design, voice rules and cold-read gates. Commentary, not investment advice.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "media",
+      "tags": ["douyin", "short-video", "scriptwriting", "finance", "chinese"],
+      "skills": ["./skills/douyin-finance-koubo"]
     }
   ]
 }
