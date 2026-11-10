@@ -12,6 +12,8 @@ Skills for building open-source software, making videos, writing Douyin finance 
 | [`douyin-finance-koubo`](skills/douyin-finance-koubo/SKILL.md) | Writes Douyin (抖音) finance and business 口播 scripts in Mandarin. It checks what everyone already says on the topic, requires at least two pieces of material others lack, pushes the insight past the first layer and hands the viewer a reusable judgment tool. It designs retention as a chain of questions, drafts in spoken Chinese with the structural tells of generated text ruled out, and runs cold reads for drop-off, takeaway, follow and voice before delivery. It never invents people or experiences and gives no trade advice. | Writing, rewriting or auditing a finance, macro, policy or business-commentary script for Douyin |
 | [`miao-yanliang-macro-lens`](skills/miao-yanliang-macro-lens/SKILL.md) | Analyzes monetary policy, the dollar, gold, the renminbi, China's low inflation and AI-and-inflation questions with a framework drawn from Miao Yanliang's public books, reports and interviews (unofficial, not him). It works through reality, mechanism, judgment, gives every call a horizon, conditions and a failure signal, keeps dated opinion snapshots apart from the framework, and ends with the strongest counter-argument. It gives no trade advice. | Asking about de-dollarization, RMB internationalization, China's deflation, whether AI is a bubble, or how a chief-economist-style macro view would read an asset |
 
+| [`webnovel-workflow`](skills/webnovel-workflow/SKILL.md) | Takes an author from an idea to a finished long-form Chinese web novel, one chapter at a time. A project archive on disk holds the book's state, so a new conversation picks up where the last one stopped. It stops only for decisions about direction and brings at most three of them at a time with a recommended default. A reader with no access to the outline checks each chapter, a small tool does the filing and word counts, and the author's own edits are diffed to learn their taste. Adapted from [阿序AI 长篇小说工作流 4.0](https://github.com/asass-11/axu-novel); CC BY-NC 4.0, not MIT. | Starting a novel from nothing, writing the next chapter, planning the next batch of chapter outlines, closing a volume, or fixing a passage that reads wrong |
+
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
 ## What makes these different
@@ -34,6 +36,7 @@ Skills for building open-source software, making videos, writing Douyin finance 
 /plugin install narrative-dcf-valuation@milesradford-skills
 /plugin install douyin-finance-koubo@milesradford-skills
 /plugin install miao-yanliang-macro-lens@milesradford-skills
+/plugin install webnovel-workflow@milesradford-skills
 ```
 
 Each skill installs as its own plugin, so you can take one without the other.
@@ -44,7 +47,7 @@ Copy the skill folder into your agent's skills directory. For Claude Code that's
 
 ```sh
 git clone https://github.com/milesradford99/agent-skills
-cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/narrative-dcf-valuation agent-skills/skills/douyin-finance-koubo agent-skills/skills/miao-yanliang-macro-lens ~/.claude/skills/
+cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/narrative-dcf-valuation agent-skills/skills/douyin-finance-koubo agent-skills/skills/miao-yanliang-macro-lens agent-skills/skills/webnovel-workflow ~/.claude/skills/
 ```
 
 ### Claude app
@@ -62,10 +65,11 @@ In a repo of yours, ask your agent:
 - "Where are A-shares in the clearing cycle right now, and how sure are you?" (`rescue-a-stock`)
 - "长江电力现在的股价隐含了什么业绩天花板？" (`narrative-dcf-valuation`)
 - "帮我写一条抖音财经口播稿，讲讲AI短剧到底谁在赚钱。" (`douyin-finance-koubo`)
+- "开一本新书。" (`webnovel-workflow`)
 
 ## How these were built
 
-`oss-mentor` and `oss-design` were drafted with Claude, then reviewed by five independent agents (runtime mechanics, security red team, skeptical OSS maintainer, product and design strategy, fact-check against current docs) and re-verified by a sixth. [`docs/EVALS.md`](docs/EVALS.md) lists the scenarios used to compare them against an agent with no skill. `video-director` was built from a deep-research report on agentic video production, and `rescue-a-stock` from a deep-research study of 64 Chinese market interventions; neither has had that multi-agent review yet. `douyin-finance-koubo` went through five versions against one creator's feedback on real scripts and has had no independent review. A human maintainer reviews and owns every change.
+`oss-mentor` and `oss-design` were drafted with Claude, then reviewed by five independent agents (runtime mechanics, security red team, skeptical OSS maintainer, product and design strategy, fact-check against current docs) and re-verified by a sixth. [`docs/EVALS.md`](docs/EVALS.md) lists the scenarios used to compare them against an agent with no skill. `video-director` was built from a deep-research report on agentic video production, and `rescue-a-stock` from a deep-research study of 64 Chinese market interventions; neither has had that multi-agent review yet. `douyin-finance-koubo` went through five versions against one creator's feedback on real scripts and has had no independent review. `webnovel-workflow` is an adaptation of 阿序AI's axu-novel 4.0: the craft checks and examples are theirs, the process changes (two tiers of checkpoints, a genre module, an independent reader, the bookkeeping tool) came from a read-through of the original and have not yet been run on a real book. A human maintainer reviews and owns every change.
 
 Product facts in the skills are dated (October 2026) and the skills tell the agent to re-check them before relying on them.
 
@@ -75,4 +79,4 @@ Issues and small PRs are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md), includ
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE), except `skills/webnovel-workflow/`, which is adapted from 阿序AI's work and stays under [CC BY-NC 4.0](skills/webnovel-workflow/LICENSE): attribution required, no commercial redistribution of the skill. Novels written with it are yours.

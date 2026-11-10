@@ -1,0 +1,35 @@
+webnovel-workflow（长篇网文工作流）
+
+改编自《阿序AI 长篇小说工作流 4.0》（axu-novel）
+原作 Copyright (c) 2026 阿序AI
+原作地址：https://github.com/asass-11/axu-novel
+修改部分 Copyright (c) 2026 MilesRadford
+
+本文件夹里的全部文件（包括附带的样章和 references/tools/ 里的脚本）采用
+知识共享 署名-非商业性使用 4.0 国际 许可协议（CC BY-NC 4.0），不适用本仓库
+根目录的 MIT 许可。
+
+协议说明：https://creativecommons.org/licenses/by-nc/4.0/deed.zh-hans
+协议全文：https://creativecommons.org/licenses/by-nc/4.0/legalcode.zh-hans
+
+你可以免费使用、复制、修改和分享本作品，但要：
+- 署名：注明原作来自“阿序AI”，并说明是否做过修改；
+- 非商业：除下方原作者明确授予的额外许可外，不得把本作品或改过的版本拿去卖钱
+  或用于其他商业用途。
+
+原作者授予的额外许可（原文照录）：允许使用本 Skill 辅助独立创作小说，包括商业
+发表、投稿、销售小说和获取稿酬；此项许可不包含商业分发或转售本 Skill 及其修改
+版。本项目不对这些独立创作的小说主张权利。
+
+相对原作做了修改，本改编版未经原作者审阅或认可：
+- 文件布局：assets/ 并入 references/；Skill 改名为 webnovel-workflow。
+- SKILL.md、references/写一章.md 重写；references/开书.md 第一步重写，其余各步
+  和其他参考文件、模板有增删。
+- 新增 references/题材-力量体系.md（内容摘自原作开书各步）、
+  references/tools/novel.py。
+- references/去AI味.md 的错例、references/排细纲.md 的九个问题和
+  references/参照样章-师姐第一章.md 基本保持原样。
+
+This work is adapted from "阿序AI 长篇小说工作流 4.0" by 阿序AI and is licensed under
+the Creative Commons Attribution-NonCommercial 4.0 International License.
+https://creativecommons.org/licenses/by-nc/4.0/
