@@ -10,6 +10,7 @@ Skills for building open-source software, making videos, writing Douyin finance 
 | [`rescue-a-stock`](skills/rescue-a-stock/SKILL.md) | Reads where China's A-share market stands in the state rescue and clearing cycle. It pulls live index, leverage and ETF data, classifies each intervention by who pays, sets a stage per market segment with rule-based confidence, and explains it as a causal chain with a test for every link. Analysis only: it gives no trade advice. | Asking whether a policy or market bottom is in, whether the National Team is really buying, what a meeting means, or what would trigger the next rescue |
 | [`narrative-dcf-valuation`](skills/narrative-dcf-valuation/SKILL.md) | Values any listed stock with the closed-form DCF from the book 穿透叙事 (Zou Peixuan, 2026). It reverses the price into the implied earnings ceiling, replays the book's case-study routine (implied-ceiling timeline, revision path, leading variable, margin and event checks), and ends with a fair value, a fair ceiling and the contradictions the market hasn't priced. Its calculator reproduces the book's tables exactly. Analysis only: it gives no trade advice. | Asking what a stock's price implies, what a fair PE or value is, or anything about 业绩天花板, 隐含预期 or 叙事估值 |
 | [`douyin-finance-koubo`](skills/douyin-finance-koubo/SKILL.md) | Writes Douyin (抖音) finance and business 口播 scripts in Mandarin. It checks what everyone already says on the topic, requires at least two pieces of material others lack, pushes the insight past the first layer and hands the viewer a reusable judgment tool. It designs retention as a chain of questions, drafts in spoken Chinese with the structural tells of generated text ruled out, and runs cold reads for drop-off, takeaway, follow and voice before delivery. It never invents people or experiences and gives no trade advice. | Writing, rewriting or auditing a finance, macro, policy or business-commentary script for Douyin |
+| [`miao-yanliang-macro-lens`](skills/miao-yanliang-macro-lens/SKILL.md) | Analyzes monetary policy, the dollar, gold, the renminbi, China's low inflation and AI-and-inflation questions with a framework drawn from Miao Yanliang's public books, reports and interviews (unofficial, not him). It works through reality, mechanism, judgment, gives every call a horizon, conditions and a failure signal, keeps dated opinion snapshots apart from the framework, and ends with the strongest counter-argument. It gives no trade advice. | Asking about de-dollarization, RMB internationalization, China's deflation, whether AI is a bubble, or how a chief-economist-style macro view would read an asset |
 
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
@@ -32,6 +33,7 @@ Skills for building open-source software, making videos, writing Douyin finance 
 /plugin install rescue-a-stock@milesradford-skills
 /plugin install narrative-dcf-valuation@milesradford-skills
 /plugin install douyin-finance-koubo@milesradford-skills
+/plugin install miao-yanliang-macro-lens@milesradford-skills
 ```
 
 Each skill installs as its own plugin, so you can take one without the other.
@@ -42,7 +44,7 @@ Copy the skill folder into your agent's skills directory. For Claude Code that's
 
 ```sh
 git clone https://github.com/milesradford99/agent-skills
-cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/narrative-dcf-valuation agent-skills/skills/douyin-finance-koubo ~/.claude/skills/
+cp -r agent-skills/skills/oss-mentor agent-skills/skills/oss-design agent-skills/skills/video-director agent-skills/skills/rescue-a-stock agent-skills/skills/narrative-dcf-valuation agent-skills/skills/douyin-finance-koubo agent-skills/skills/miao-yanliang-macro-lens ~/.claude/skills/
 ```
 
 ### Claude app
