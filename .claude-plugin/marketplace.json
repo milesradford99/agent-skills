@@ -71,6 +71,17 @@
       "category": "media",
       "tags": ["douyin", "short-video", "scriptwriting", "finance", "chinese"],
       "skills": ["./skills/douyin-finance-koubo"]
+    },
+    {
+      "name": "miao-yanliang-macro-lens",
+      "source": "./",
+      "strict": false,
+      "description": "Analyzes monetary policy, the dollar, gold, the renminbi, China's low inflation and AI-and-inflation questions with a macro framework drawn from Miao Yanliang's public work. Unofficial; analysis, not investment advice.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "research",
+      "tags": ["macro", "china", "monetary-policy", "dollar", "research"],
+      "skills": ["./skills/miao-yanliang-macro-lens"]
     }
   ]
 }
