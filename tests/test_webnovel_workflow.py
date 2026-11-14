@@ -67,28 +67,61 @@ class ProjectTest(unittest.TestCase):
         path.write_text(text, encoding="utf-8")
         return path
 
-    def test_adopt_files_the_chapter_and_archives_only_its_drafts(self):
+    def _close(self, number):
+        """Do the agent's part of a write-back, then close it."""
+        timeline = self.project / "记录-时间线.md"
+        timeline.write_text(timeline.read_text(encoding="utf-8") + f"- 第{number:03d}章：发生了事\n", encoding="utf-8")
+        status = self.project / "01-项目状态.md"
+        text = context.set_field(status.read_text(encoding="utf-8"), "交接", "更新于", f"第{number}章后，11-13")
+        status.write_text(text, encoding="utf-8")
+        result = novel.finish_writeback(self.project)
+        self.assertTrue(result["closed"], result["errors"])
+        return result
+
+    def test_adopt_files_the_chapter_snapshots_and_opens_the_writeback(self):
         novel.init_project(self.project)
-        self._draft("第003章-处境卡.md")
-        self._draft("第003章-v1-初稿.md")
-        chosen = self._draft("第003章-v2-候选.md", "定稿的正文。")
-        other = self._draft("第004章-处境卡.md")
-        result = novel.adopt_chapter(self.project, 3, chosen)
-        self.assertEqual((self.project / "正文" / "第003章.md").read_text(encoding="utf-8"), "定稿的正文。")
+        self._draft("第001章-处境卡.md")
+        self._draft("第001章-v1-初稿.md")
+        chosen = self._draft("第001章-v2-候选.md", "定稿的正文。")
+        other = self._draft("第002章-处境卡.md")
+        result = novel.adopt_chapter(self.project, 1, chosen)
+        self.assertEqual((self.project / "正文" / "第001章.md").read_text(encoding="utf-8"), "定稿的正文。")
         self.assertEqual(len(result["moved"]), 3)
         self.assertTrue(other.exists())
-        self.assertTrue((self.project / "待确认" / "已处理" / "第003章-v2-候选.md").exists())
+        self.assertTrue((result["snapshot"] / "记录-人物现状.md").exists())
+        fields = context.status_fields((self.project / "01-项目状态.md").read_text(encoding="utf-8"))
+        self.assertEqual(fields["已采用到"], "第1章")
+        self.assertEqual(fields["当前唯一候选"], "无")
+        self.assertTrue(fields["来源章节和采用的文件"].startswith("第1章，待确认/第001章-v2-候选.md"))
+        status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
+        self.assertEqual(context.writeback_in_progress(status), 1)
 
-    def test_adopt_refuses_to_overwrite_unless_asked_and_keeps_the_old_text(self):
+    def test_adopt_refuses_without_touching_anything(self):
+        novel.init_project(self.project)
+        before = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
+        skipped = self._draft("第003章-v2-候选.md", "跳章。")
+        with self.assertRaises(ValueError):
+            novel.adopt_chapter(self.project, 3, skipped)
+        self.assertTrue(skipped.exists())
+        self.assertEqual((self.project / "01-项目状态.md").read_text(encoding="utf-8"), before)
+        self.assertFalse((self.project / "待确认" / "已处理").exists())
+        novel.adopt_chapter(self.project, 1, self._draft("第001章-v2-候选.md", "第一章。"))
+        second = self._draft("第002章-v2-候选.md", "第二章。")
+        with self.assertRaises(ValueError, msg="the open write-back blocks the next adoption"):
+            novel.adopt_chapter(self.project, 2, second)
+        self.assertTrue(second.exists())
+
+    def test_replace_keeps_the_old_text_and_the_old_snapshot(self):
         novel.init_project(self.project)
         novel.adopt_chapter(self.project, 1, self._draft("第001章-v2-候选.md", "第一版。"))
+        self._close(1)
         again = self._draft("第001章-v3-候选.md", "第二版。")
         with self.assertRaises(FileExistsError):
             novel.adopt_chapter(self.project, 1, again)
-        self.assertTrue(again.exists())
         result = novel.adopt_chapter(self.project, 1, again, replace=True)
         self.assertEqual((self.project / "正文" / "第001章.md").read_text(encoding="utf-8"), "第二版。")
         self.assertEqual(Path(result["backup"]).read_text(encoding="utf-8"), "第一版。")
+        self.assertTrue(any("被替换" in p.name for p in (self.project / "待确认" / "已处理").iterdir()))
 
     def test_adopt_rejects_an_empty_or_missing_file(self):
         novel.init_project(self.project)
@@ -98,16 +131,33 @@ class ProjectTest(unittest.TestCase):
             novel.adopt_chapter(self.project, 1, self.project / "没有这个文件.md")
         self.assertEqual(novel.main(["adopt", str(self.project), "1", str(self.project / "没有.md")]), 1)
 
-    def test_status_reports_chapters_gaps_and_pending_drafts(self):
+    def test_done_refuses_until_timeline_and_handover_reach_the_chapter(self):
+        novel.init_project(self.project)
+        novel.adopt_chapter(self.project, 1, self._draft("第001章-v2-候选.md", "第一章。"))
+        result = novel.finish_writeback(self.project)
+        self.assertFalse(result["closed"])
+        joined = "\n".join(result["errors"])
+        self.assertIn("记录-时间线.md 里还没有第1章", joined)
+        self.assertIn("交接", joined)
+        self.assertEqual(novel.main(["done", str(self.project)]), 1)
+        closed = self._close(1)
+        self.assertIn("记录-时间线.md", closed["changed"])
+        self.assertIn("细纲用完了", closed["next"])
+        status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
+        self.assertIsNone(context.writeback_in_progress(status))
+        with self.assertRaises(ValueError):
+            novel.finish_writeback(self.project)
+
+    def test_status_reports_chapters_and_pending_drafts(self):
         novel.init_project(self.project)
         novel.adopt_chapter(self.project, 1, self._draft("第001章-v2-候选.md", "一二三四五。"))
-        novel.adopt_chapter(self.project, 3, self._draft("第003章-v2-候选.md", "一二三。"))
-        self._draft("第004章-v1-初稿.md")
+        self._close(1)
+        novel.adopt_chapter(self.project, 2, self._draft("第002章-v2-候选.md", "一二三。"))
+        self._draft("第003章-v1-初稿.md")
         status = novel.project_status(self.project)
-        self.assertEqual(status["chapters"], {1: 6, 3: 4})
-        self.assertEqual(status["latest"], 3)
-        self.assertEqual(status["missing"], [2])
-        self.assertEqual(status["pending"], ["第004章-v1-初稿.md"])
+        self.assertEqual(status["chapters"], {1: 6, 2: 4})
+        self.assertEqual(status["missing"], [])
+        self.assertEqual(status["pending"], ["第003章-v1-初稿.md"])
 
 
 def write(project, name, text):
@@ -134,7 +184,7 @@ def sample_book(project):
           "## D002\n- 原来是什么：藏经阁有阵法\n")
     write(project, "记录-时间线.md", "# 时间线\n\n- 第001章：入门\n- 第002章：失窃\n- 第003章：受伤\n- 第004章：待填写\n")
     write(project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n### 第4章：对质\n- 出场：师姐、顾师兄、执事\n"
-          "- 伏笔：F001、F009\n- 师姐撞见他翻找丹方。\n\n### 第5章：夜审\n- 伏笔：F003\n- 赵三的鬼魂出现。\n")
+          "- 伏笔：F001、F009\n- 师姐撞见他翻找丹方。\n\n### 第5章：夜审\n- 出场：赵三\n- 伏笔：F003\n- 赵三的鬼魂出现。\n")
     for n in (1, 2, 3):
         write(project, f"正文/第{n:03d}章.md", f"# 第{n}章\n\n第{n}章开头。\n\n第{n}章结尾，林晚晴走了。\n")
     status = (Path(project) / "01-项目状态.md").read_text(encoding="utf-8")
@@ -191,11 +241,16 @@ class BriefTest(unittest.TestCase):
         novel.adopt_chapter(self.project, 4, draft)
         self.assertTrue((self.project / "待确认" / "已处理" / "第004章-资料包.md").exists())
 
-    def test_missing_outline_and_old_archive_degrade_without_failing(self):
+    def test_refuses_without_an_outline_index_or_core_files(self):
+        with self.assertRaises(ValueError):
+            context.build_brief(self.project, 9)
+        outline = self.project / "04-大纲.md"
+        outline.write_text("# 大纲\n\n## 当前细纲\n### 第4章：对质\n- 师姐撞见他。\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            context.build_brief(self.project, 4)
         (self.project / "记录-伏笔.md").unlink()
-        brief = context.build_brief(self.project, 9)
-        self.assertFalse(brief.manifest["outline"])
-        self.assertIn("记录-伏笔.md", brief.manifest["missing_files"])
+        with self.assertRaises(FileNotFoundError):
+            context.build_brief(self.project, 4)
         with self.assertRaises(FileNotFoundError):
             context.build_brief(Path(self._tmp.name) / "空", 1)
 
@@ -217,41 +272,94 @@ class CheckTest(unittest.TestCase):
         write(self.project, "正文/第005章.md", "跳章。")
         write(self.project, "待确认/第002章-v3-候选.md", "旧稿。")
         status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
-        status = status.replace("- 状态：无（进行中／完成）", "- 状态：进行中")
         status = status.replace("- 当前唯一候选：无（文件路径）", "- 当前唯一候选：待确认/第006章-v2-候选.md")
         write(self.project, "01-项目状态.md", status)
         errors, warnings = context.check_project(self.project)
         joined = "\n".join(errors)
         self.assertIn("已采用到第3章", joined)
         self.assertIn("缺章：第4章", joined)
-        self.assertIn("进行中", joined)
         self.assertIn("第006章-v2-候选.md 不存在", joined)
         self.assertIn("F009", joined)
         notes = "\n".join(warnings)
         self.assertIn("F003", notes)
         self.assertIn("赵三", notes)
         self.assertIn("第002章-v3-候选.md", notes)
-        self.assertIn("「第5章：夜审」没有“出场”", notes)
         self.assertEqual(novel.main(["check", str(self.project)]), 1)
 
-    def test_old_archive_without_handover_only_warns(self):
+    def test_an_interrupted_writeback_lists_what_changed_since_the_snapshot(self):
         sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n")
+        draft = write(self.project, "待确认/第004章-v2-候选.md", "林晚推门。")
+        novel.adopt_chapter(self.project, 4, draft)
+        current = self.project / "记录-人物现状.md"
+        current.write_text(current.read_text(encoding="utf-8").replace("- 现在在哪：药园", "- 现在在哪：执法堂"), encoding="utf-8")
+        errors, _ = context.check_project(self.project)
+        line = next(line for line in errors if "进行中" in line)
+        changed_part, unchanged_part = line.split("还没动")
+        self.assertIn("记录-人物现状.md", changed_part)
+        self.assertIn("记录-时间线.md", unchanged_part)
+
+    def test_done_warns_about_characters_the_chapter_names_but_records_skip(self):
+        sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n")
+        novel.adopt_chapter(self.project, 4, write(self.project, "待确认/第004章-v2-候选.md", "林晚和顾长风吵了一架。"))
+        timeline = self.project / "记录-时间线.md"
+        timeline.write_text(timeline.read_text(encoding="utf-8").replace("- 第004章：待填写", "- 第004章：吵架"), encoding="utf-8")
+        status = self.project / "01-项目状态.md"
+        status.write_text(context.set_field(status.read_text(encoding="utf-8"), "交接", "更新于", "第4章后"), encoding="utf-8")
+        result = novel.finish_writeback(self.project)
+        self.assertTrue(result["closed"], result["errors"])
+        self.assertTrue(any("林晚" in line and "顾长风" in line for line in result["warnings"]))
+
+    def test_a_dead_character_in_the_next_outline_blocks_unless_marked(self):
+        sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n### 第4章：药种\n- 出场：林晚、赵三\n- 伏笔：无\n- 赵三递药种。\n")
+        errors, _ = context.check_project(self.project)
+        self.assertTrue(any("赵三" in line and "特殊出场" in line for line in errors))
+        self.assertTrue(context.build_brief(self.project, 4).manifest["flagged"])
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n### 第4章：药种\n- 出场：林晚、赵三\n- 伏笔：无\n"
+              "- 特殊出场：赵三（林晚的回忆）\n- 林晚想起赵三递药种。\n")
+        errors, _ = context.check_project(self.project)
+        self.assertFalse(any("赵三" in line for line in errors))
+        self.assertFalse(context.build_brief(self.project, 4).manifest["flagged"])
+
+    def test_done_requires_entries_for_names_the_outline_listed(self):
+        sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n### 第4章：巡夜\n- 出场：林晚、执事\n- 伏笔：F001\n- 执事巡夜。\n")
+        novel.adopt_chapter(self.project, 4, write(self.project, "待确认/第004章-v2-候选.md", "执事提灯走来。"))
+        timeline = self.project / "记录-时间线.md"
+        timeline.write_text(timeline.read_text(encoding="utf-8").replace("- 第004章：待填写", "- 第004章：执事来了"), encoding="utf-8")
+        status = self.project / "01-项目状态.md"
+        status.write_text(context.set_field(status.read_text(encoding="utf-8"), "交接", "更新于", "第4章后"), encoding="utf-8")
+        result = novel.finish_writeback(self.project)
+        self.assertFalse(result["closed"])
+        self.assertTrue(any("执事" in line for line in result["errors"]))
+        characters = self.project / "03-人物.md"
+        characters.write_text(characters.read_text(encoding="utf-8") + "\n## 执事\n- 别名：执法堂执事\n- 身份：执法堂\n", encoding="utf-8")
+        current = self.project / "记录-人物现状.md"
+        current.write_text(current.read_text(encoding="utf-8") + "\n## 执事\n- 状态：在场\n- 最近更新：第4章\n", encoding="utf-8")
+        self.assertTrue(novel.finish_writeback(self.project)["closed"])
+
+    def test_format_rules_are_errors(self):
+        sample_book(self.project)
+        write(self.project, "03-人物.md", "# 人物\n\n## 林晚\n- 身份：没写别名\n")
+        write(self.project, "记录-人物现状.md", "# 人物现状\n\n## 林晚\n- 现在在哪：没写状态\n")
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n### 第4章：对质\n- 没有索引行\n")
         status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
         start, end = status.index("## 交接"), status.index("## 开书进度")
         write(self.project, "01-项目状态.md", status[:start] + status[end:])
-        write(self.project, "04-大纲.md", "# 大纲\n")
-        errors, warnings = context.check_project(self.project)
-        self.assertEqual(errors, [])
-        self.assertTrue(any("交接" in line for line in warnings))
+        errors, _ = context.check_project(self.project)
+        joined = "\n".join(errors)
+        for expected in ("缺“别名”", "缺“状态”", "缺“出场”或“伏笔”", "没有“交接”"):
+            self.assertIn(expected, joined)
 
     def test_size_caps_and_duplicate_ids(self):
         sample_book(self.project)
-        write(self.project, "记录-伏笔.md", "# 伏笔\n\n## 没收的\n### F001\n- 内容：a\n\n### F001\n- 内容：b\n")
-        write(self.project, "记录-人物现状.md", "# 人物现状\n\n" + "很长的记录。" * 4000)
+        write(self.project, "记录-伏笔.md", "# 伏笔\n\n## 没收的\n### F001\n- 涉及：林晚\n- 内容：a\n\n### F001\n- 涉及：林晚\n- 内容：b\n")
+        write(self.project, "记录-人物现状.md", "# 人物现状\n\n## 林晚\n- 状态：在场\n" + "很长的记录。" * 4000)
         errors, warnings = context.check_project(self.project)
         self.assertTrue(any("编号重复：F001" in line for line in errors))
         self.assertTrue(any(line.startswith("记录-人物现状.md 有") for line in warnings))
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -3,15 +3,17 @@
 
     novel.py init   <project>                      create the archive, never overwriting
     novel.py count  <file> [--target N]            count the characters of a chapter
-    novel.py adopt  <project> <chapter> <file>     file an adopted chapter, archive its drafts
+    novel.py adopt  <project> <chapter> <file>     file an adopted chapter, snapshot records, open the write-back
     novel.py diff   <candidate> <final>            list what the author changed, by paragraph
     novel.py status <project> [--target N]         adopted chapters, sizes, pending drafts
     novel.py check  <project>                      read-only check of status, records and sizes
     novel.py brief  <project> <chapter>            write the chapter's context pack to 待确认/
+    novel.py done   <project>                      close the write-back once check is clean
 
-Nothing here deletes a file, and nothing edits 01-项目状态.md or the 记录-*.md
-records: those describe the story and stay with the agent and the author.
-`check` and `brief` live in context.py, next to this file.
+Nothing here deletes a file or edits the story records (02–04, 记录-*.md): those stay
+with the agent and the author. `adopt` and `done` own the progress fields of
+01-项目状态.md (已采用到, the candidate pointers, 最近一次回写, 下一步) so they can't
+drift from the files. `check`, `brief` and the status helpers live in context.py.
 """
 
 from __future__ import annotations
@@ -150,7 +152,12 @@ def init_project(project: Path, resources: bool = False) -> tuple[list[str], lis
 
 
 def adopt_chapter(project: Path, number: int, source: Path, replace: bool = False) -> dict[str, object]:
-    """Copy `source` to 正文/第NNN章.md and move the chapter's drafts to 待确认/已处理/."""
+    """File an adopted chapter and open its write-back.
+
+    Copies `source` to 正文/第NNN章.md, snapshots the records, moves the chapter's drafts
+    to 待确认/已处理/, and updates the progress fields of 01-项目状态.md. All checks run
+    before anything is touched, so a refusal leaves the archive as it was.
+    """
     if number < 1:
         raise ValueError("章号从 1 开始")
     if not source.is_file():
@@ -158,12 +165,46 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
     text = source.read_text(encoding="utf-8")
     if count_chars(text) == 0:
         raise ValueError(f"{source} 里没有正文")
+    status_path = project / context.STATUS
+    if not status_path.is_file():
+        raise FileNotFoundError(f"{project} 里没有 {context.STATUS}：不是小说档案，或者还没建档")
+    status_text = status_path.read_text(encoding="utf-8-sig")
+    open_writeback = context.writeback_in_progress(status_text)
+    if open_writeback is not None:
+        raise ValueError(f"第{open_writeback}章的回写还没完成：先补完并跑 novel.py done，再采用新的一章")
     body = project / BODY_DIR
     pending = project / PENDING_DIR
     done = pending / DONE_DIR
     target = body / f"{chapter_name(number)}.md"
+    adopted = context.adopted_chapters(project)
+    latest = adopted[-1] if adopted else 0
     if target.exists() and not replace:
         raise FileExistsError(f"{target} 已经存在；确认要换版本就加 --replace，旧正文会留档")
+    if not target.exists() and number != latest + 1:
+        raise ValueError(f"正文已采用到第{latest}章，下一章应该是第{latest + 1}章，不是第{number}章")
+
+    try:
+        relative = source.resolve().relative_to(project.resolve())
+    except ValueError:
+        relative = source
+    files = "、".join(context.RECORDS_TO_UPDATE)
+    updated = status_text
+    for section, key, value in (
+        ("现在在哪", "下一步", f"回写第{number}章：按采用的正文更新记录和交接，再跑 novel.py done"),
+        ("正文进度", "已采用到", f"第{number}章"),
+        ("正文进度", "正在写", "无"),
+        ("正文进度", "这一章的进度", "无"),
+        ("正文进度", "这一章的自检", "无"),
+        ("正文进度", "完整初稿", "无"),
+        ("正文进度", "当前唯一候选", "无"),
+        ("最近一次回写", "来源章节和采用的文件", f"第{number}章，{relative}"),
+        ("最近一次回写", "状态", "进行中"),
+        ("最近一次回写", "要更新的文件", f"{files}（有变化的才改；有资源记录的加上 {context.RESOURCES}）"),
+        ("最近一次回写", "改过的文件", "无（novel.py done 时填）"),
+    ):
+        updated = context.set_field(updated, section, key, value)
+
+    snapshot = context.take_snapshot(project, number, replace)
     body.mkdir(parents=True, exist_ok=True)
     done.mkdir(parents=True, exist_ok=True)
     backup = None
@@ -178,7 +219,43 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
             destination = free_path(done / draft.name)
             shutil.move(str(draft), str(destination))
             moved.append(destination.name)
-    return {"target": target, "chars": count_chars(text), "moved": moved, "backup": backup}
+    status_path.write_text(updated, encoding="utf-8")
+    return {"target": target, "chars": count_chars(text), "moved": moved, "backup": backup, "snapshot": snapshot}
+
+
+def finish_writeback(project: Path) -> dict[str, object]:
+    """Close the write-back in progress if `check` is clean. Returns errors instead of raising."""
+    status_path = project / context.STATUS
+    status_text = status_path.read_text(encoding="utf-8-sig")
+    number = context.writeback_in_progress(status_text)
+    if number is None:
+        raise ValueError("没有进行中的回写")
+    errors, warnings = context.check_project(project, finishing=True)
+    if errors:
+        return {"closed": False, "chapter": number, "errors": errors, "warnings": warnings}
+    changed, unchanged = context.writeback_changes(project, number)
+    fields = context.status_fields(status_text)
+    outline_numbers = [n for n, _, _ in context.current_outlines((project / context.OUTLINE).read_text(encoding="utf-8-sig"))]
+    remaining = [n for n in outline_numbers if n > number]
+    if fields.get("当前卷写到最后一章", "").startswith("是"):
+        stage, step = "卷末", "卷末第 1 步：检查许给读者的事（读 卷末和完本.md）"
+    elif number + 1 in outline_numbers:
+        stage, step = "写正文", f"写第{number + 1}章"
+    else:
+        stage, step = "写正文", f"细纲用完了：先排第{number + 1}章起的细纲（读 排细纲.md），作者确认后再写"
+    updated = status_text
+    for section, key, value in (
+        ("现在在哪", "当前阶段", stage),
+        ("现在在哪", "下一步", step),
+        ("最近一次回写", "状态", "完成"),
+        ("最近一次回写", "改过的文件", "、".join(changed) or "无"),
+    ):
+        updated = context.set_field(updated, section, key, value)
+    status_path.write_text(updated, encoding="utf-8")
+    if 0 < len(remaining) < 3 and stage == "写正文":
+        warnings.append(f"细纲只剩 {len(remaining)} 章：提醒作者排下一批")
+    return {"closed": True, "chapter": number, "errors": [], "warnings": warnings,
+            "changed": changed, "unchanged": unchanged, "next": step}
 
 
 def project_status(project: Path) -> dict[str, object]:
@@ -218,7 +295,23 @@ def cmd_adopt(args: argparse.Namespace) -> int:
         print(f"旧正文留档：{result['backup']}")
     moved = result["moved"]
     print(f"挪进 {PENDING_DIR}/{DONE_DIR}/：{'、'.join(moved) if moved else '无'}")
-    print("还没做：按采用的正文更新各份记录和 01-项目状态.md，核对后再把回写标成完成。")
+    print(f"记录快照：{result['snapshot']}")
+    print("项目状态已改：已采用到、候选清空、回写标“进行中”。")
+    print("还没做：按采用的正文更新各份记录和交接，然后跑 novel.py done。")
+    return 0
+
+
+def cmd_done(args: argparse.Namespace) -> int:
+    result = finish_writeback(Path(args.project))
+    for line in result["errors"]:
+        print(f"错误：{line}")
+    for line in result["warnings"]:
+        print(f"提醒：{line}")
+    if not result["closed"]:
+        print(f"第{result['chapter']}章的回写还没完成，上面的错误改完再跑一次。")
+        return 1
+    print(f"第{result['chapter']}章回写完成。改过的：{'、'.join(result['changed']) or '无'}；没动的：{'、'.join(result['unchanged']) or '无'}")
+    print(f"下一步：{result['next']}")
     return 0
 
 
@@ -308,7 +401,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target", type=int, default=0)
     p.set_defaults(func=cmd_count)
 
-    p = sub.add_parser("adopt", help="存正文，把这一章的旧稿挪去留档")
+    p = sub.add_parser("adopt", help="存正文、快照记录、旧稿留档，并在项目状态里登记回写")
     p.add_argument("project")
     p.add_argument("chapter", type=int)
     p.add_argument("file")
@@ -324,6 +417,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("project")
     p.add_argument("--target", type=int, default=0)
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("done", help="check 干净后把回写标成完成，并写好下一步")
+    p.add_argument("project")
+    p.set_defaults(func=cmd_done)
 
     p = sub.add_parser("check", help="只读检查项目状态、记录和文件大小，有错误时返回 1")
     p.add_argument("project")

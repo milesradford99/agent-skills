@@ -3,16 +3,16 @@
 Used by novel.py (`brief`, `check`). Standard library only, read-only: nothing here
 writes to the archive except `write_brief`, which writes one derived file into 待确认/.
 
-Archive conventions this relies on (the templates set them up):
+Archive conventions this relies on (the templates set them up, `check` enforces them):
 - An entry is a markdown heading (## or deeper) whose title is a name, followed by
   `- 别名：…` on one of its lines. Headings in SECTION_TITLES are sections, not entries.
 - A chapter outline is a heading `### 第N章：…` with `- 出场：…` and `- 伏笔：…` lines.
 - Status fields are `- 键：值` lines in 01-项目状态.md; the handover is its `## 交接` section.
-Old archives that don't follow these still work: unmatched files are reported, not fatal.
 """
 
 from __future__ import annotations
 
+import filecmp
 import re
 from dataclasses import dataclass, field
 from datetime import date
@@ -31,6 +31,9 @@ RESOURCES = "记录-资源.md"
 BODY_DIR = "正文"
 PENDING_DIR = "待确认"
 DONE_DIR = "已处理"
+CORE_FILES = (STATUS, RULES, SETTINGS, CHARACTERS, OUTLINE, CURRENT, FORESHADOW, TIMELINE, DROPPED)
+SNAPSHOT_FILES = (STATUS, SETTINGS, CHARACTERS, OUTLINE, CURRENT, FORESHADOW, TIMELINE, DROPPED, RESOURCES)
+RECORDS_TO_UPDATE = (CURRENT, FORESHADOW, TIMELINE, CHARACTERS, SETTINGS, OUTLINE)
 
 SECTION_TITLES = {
     "世界与生活", "能力、技术或制度", "重要地点和物品", "尚未揭示", "待定",
@@ -303,16 +306,23 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     if read(project, STATUS) is None:
         raise FileNotFoundError(f"{project} 里没有 {STATUS}，不是小说档案，或者还没建档")
     notes: list[str] = []
-    missing_files = [name for name in (OUTLINE, CHARACTERS, CURRENT, FORESHADOW, TIMELINE, SETTINGS, DROPPED)
-                     if read(project, name) is None]
+    missing_files = [name for name in CORE_FILES if read(project, name) is None]
+    if missing_files:
+        raise FileNotFoundError(f"档案缺文件：{'、'.join(missing_files)}（用 novel.py init 补建）")
 
     status_text = read(project, STATUS) or ""
     fields = status_fields(status_text)
     handover = named_section(status_text, "交接")
+    if handover is None:
+        raise ValueError(f"{STATUS} 没有“交接”一节，照模板补上再跑")
 
     outline_text = read(project, OUTLINE) or ""
     outline = chapter_outline(outline_text, number)
-    outline_lines = outline[1] if outline else []
+    if outline is None:
+        raise ValueError(f"{OUTLINE} 里没有第{number}章的细纲：先按 排细纲.md 排、查、交作者确认")
+    outline_lines = outline[1]
+    if not field_value(outline_lines, "出场") or not field_value(outline_lines, "伏笔"):
+        raise ValueError(f"第{number}章的细纲缺“出场”或“伏笔”一行，补上再跑（没有就写“无”）")
     listed = split_names(field_value(outline_lines, "出场"))
     outline_ids = sorted(set(FORESHADOW_ID_RE.findall("\n".join(outline_lines))))
 
@@ -345,8 +355,11 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     characters = pick(character_entries)
     current = pick(current_entries)
     settings = pick(setting_entries)
-    flagged = [f"{entry.title} 在记录里是“{entry.field('状态')}”" for entry in current
-               if entry.field("状态") and entry.field("状态")[:2] in ("死亡", "失踪")]
+    special = {index.canonical.get(name, name) for name in
+               split_names(re.sub(r"[（(][^）)]*[）)]", "", field_value(outline_lines, "特殊出场")))}
+    flagged = [f"{entry.title} 在记录里是“{entry.field('状态')}”，细纲里却出场：没写“特殊出场”说明，先停下问作者"
+               for entry in current
+               if entry.field("状态")[:2] in ("死亡", "失踪") and entry.title not in special]
 
     unrevealed = named_section(setting_text, "尚未揭示")
     unrevealed_text = "\n".join(unrevealed[1:]).strip() if unrevealed else ""
@@ -382,11 +395,10 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
         if body.strip():
             parts.append(f"## {title}\n\n{body.strip()}")
 
-    handover_lines = filled_fields(handover[1:]) if handover else []
+    handover_lines = filled_fields(handover[1:])
     if handover_lines:
         add("交接（上一次对话留下的）", "\n".join(handover_lines))
-    if outline:
-        add(f"这一章的细纲：{outline[0]}", "\n".join(outline_lines[1:]))
+    add(f"这一章的细纲：{outline[0]}", "\n".join(outline_lines[1:]))
     if previous_text:
         add(f"上一章结尾（{BODY_DIR}/{previous_path.name} 最后约 {len(previous_text)} 字）", previous_text)
     add("最近的时间线", "\n".join(timeline))
@@ -399,8 +411,8 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     add(f"资源（{RESOURCES}）", "\n\n".join(entry.as_block() for entry in resources))
 
     manifest_lines = [
-        f"- 细纲：{f'{OUTLINE}「{outline[0]}」' if outline else f'{OUTLINE} 里没有第{number}章的细纲'}",
-        f"- 细纲列出的出场：{'、'.join(listed) if listed else '没有“出场”一行，全靠扫名字'}",
+        f"- 细纲：{OUTLINE}「{outline[0]}」",
+        f"- 细纲列出的出场：{'、'.join(listed) if listed else '无'}",
         f"- 带上的条目：{'、'.join(mentioned) if mentioned else '无'}",
     ]
     if not_found:
@@ -425,12 +437,8 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     manifest_lines.append("- 没带的：写作规则（开工时读过）、分卷纲（需要时读 04-大纲.md 当前卷一节）、旧章节全文（拿不准就按名字去翻正文）")
     if index.short:
         manifest_lines.append(f"- 太短没法扫的名字：{'、'.join(sorted(index.short))}（细纲里出现时自己去查）")
-    if handover is None:
-        manifest_lines.append(f"- {STATUS} 没有“交接”一节（旧档案）")
-    elif not handover_lines:
+    if not handover_lines:
         manifest_lines.append("- 交接一节是空的")
-    if missing_files:
-        manifest_lines.append(f"- 档案里缺的文件：{'、'.join(missing_files)}")
     manifest_lines.extend(f"- {note}" for note in notes)
 
     body = "\n\n".join(parts)
@@ -442,9 +450,9 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     if len(text) > BRIEF_LIMIT:
         text = text.replace("\n## 清单\n\n", f"\n## 清单\n\n- 资料包有 {len(text)} 字，偏长：看看是不是某份记录该归档了\n", 1)
     manifest = {
-        "outline": bool(outline), "listed": listed, "mentioned": mentioned, "not_found": not_found,
+        "outline": True, "listed": listed, "mentioned": mentioned, "not_found": not_found,
         "threads": [entry.title for entry in threads], "unknown_ids": unknown_ids,
-        "flagged": flagged, "missing_files": missing_files, "chars": len(text),
+        "flagged": flagged, "chars": len(text),
     }
     return Brief(number, text, manifest)
 
@@ -457,15 +465,109 @@ def write_brief(project: Path, number: int, out: Path | None = None) -> tuple[Pa
     return path, brief
 
 
-def check_project(project: Path) -> tuple[list[str], list[str]]:
-    """Return (errors, warnings). Errors must be fixed before writing; warnings are worth a look."""
+def snapshot_dir(project: Path, number: int) -> Path:
+    return project / PENDING_DIR / DONE_DIR / f"快照-第{number:03d}章-采用前"
+
+
+def take_snapshot(project: Path, number: int, replace: bool = False) -> Path:
+    """Copy the records as they were before chapter `number` was written back."""
+    folder = snapshot_dir(project, number)
+    if folder.exists():
+        if not replace:
+            raise FileExistsError(f"{folder} 已经存在：第{number}章采用过一次，换版本要先问清作者")
+        n = 2
+        while folder.with_name(f"{folder.name}-被替换{n}").exists():
+            n += 1
+        folder.rename(folder.with_name(f"{folder.name}-被替换{n}"))
+    folder.mkdir(parents=True)
+    for name in SNAPSHOT_FILES:
+        source = project / name
+        if source.is_file():
+            (folder / name).write_bytes(source.read_bytes())
+    return folder
+
+
+def writeback_changes(project: Path, number: int) -> tuple[list[str], list[str]]:
+    """(changed, unchanged) record files compared with the snapshot taken when `number` was adopted."""
+    folder = snapshot_dir(project, number)
+    changed, unchanged = [], []
+    for name in RECORDS_TO_UPDATE + (RESOURCES,):
+        current, before = project / name, folder / name
+        if not current.is_file():
+            continue
+        if before.is_file() and filecmp.cmp(current, before, shallow=False):
+            unchanged.append(name)
+        else:
+            changed.append(name)
+    return changed, unchanged
+
+
+def set_field(text: str, section_name: str, key: str, value: str) -> str:
+    """Replace the `- key：…` line inside `## section_name`. Raises if either is missing."""
+    lines = text.splitlines()
+    marks = headings(text)
+    for position, (index, level, title) in enumerate(marks):
+        if title != section_name:
+            continue
+        end = len(lines)
+        for later_index, later_level, _ in marks[position + 1:]:
+            if later_level <= level:
+                end = later_index
+                break
+        for i in range(index + 1, end):
+            match = FIELD_RE.match(lines[i])
+            if match and match.group(1).strip() == key:
+                lines[i] = f"- {key}：{value}"
+                return "\n".join(lines) + "\n"
+        raise ValueError(f"{STATUS} 的“{section_name}”里没有“{key}”一行")
+    raise ValueError(f"{STATUS} 没有“{section_name}”一节")
+
+
+def handover_chapter(handover: list[str]) -> int | None:
+    match = re.search(r"第0*(\d+)章", field_value(handover, "更新于"))
+    return int(match.group(1)) if match else None
+
+
+def writeback_in_progress(status_text: str) -> int | None:
+    """The chapter whose write-back is still 进行中, or None."""
+    writeback = named_section(status_text, "最近一次回写")
+    if writeback and field_value(writeback, "状态").startswith("进行中"):
+        return chapter_number(field_value(writeback, "来源章节和采用的文件")) or 0
+    return None
+
+
+def chapter_mentions_stale(project: Path, number: int) -> list[str]:
+    """Characters named in adopted chapter `number` whose 现状 entry was last updated before it."""
+    chapter = project / BODY_DIR / f"第{number:03d}章.md"
+    if not chapter.is_file():
+        return []
+    characters = parse_entries(read(project, CHARACTERS) or "", CHARACTERS)
+    current = parse_entries(read(project, CURRENT) or "", CURRENT)
+    index = NameIndex(characters + current)
+    named = index.scan(prose(chapter.read_text(encoding="utf-8-sig")))
+    stale = []
+    for entry in current:
+        if entry.title in named:
+            updated = chapter_number(entry.field("最近更新"))
+            if updated is None or updated < number:
+                stale.append(entry.title)
+    return stale
+
+
+def check_project(project: Path, finishing: bool = False) -> tuple[list[str], list[str]]:
+    """Return (errors, warnings). Errors must be fixed before writing; warnings are worth a look.
+
+    With `finishing`, the write-back in progress is the one being closed, so it is not an
+    error; instead the chapter's own write-back is checked for completeness.
+    """
     errors: list[str] = []
     warnings: list[str] = []
     status_text = read(project, STATUS)
     if status_text is None:
         return [f"没有 {STATUS}：不是小说档案，或者还没建档"], []
-    if read(project, RULES) is None:
-        errors.append(f"没有 {RULES}")
+    missing = [name for name in CORE_FILES if read(project, name) is None]
+    if missing:
+        errors.append(f"档案缺文件：{'、'.join(missing)}（用 novel.py init 补建，已有的不会被覆盖）")
 
     fields = status_fields(status_text)
     adopted = adopted_chapters(project)
@@ -486,37 +588,63 @@ def check_project(project: Path) -> tuple[list[str], list[str]]:
         if not (project / path_text).is_file():
             errors.append(f"{STATUS} 里的当前唯一候选 {path_text} 不存在")
 
-    writeback = named_section(status_text, "最近一次回写")
-    if writeback and field_value(writeback, "状态").startswith("进行中"):
-        source = field_value(writeback, "来源章节和采用的文件")
-        errors.append(f"回写停在“进行中”（{'来源没写' if is_none(source) else source}）：先按写一章第九节补完")
+    in_progress = writeback_in_progress(status_text)
+    if in_progress is not None and not finishing:
+        changed, unchanged = writeback_changes(project, in_progress)
+        errors.append(f"第{in_progress}章的回写停在“进行中”：和采用前的快照比，已经改过 "
+                      f"{'、'.join(changed) or '无'}；还没动 {'、'.join(unchanged) or '无'}。"
+                      "按写一章第九节补完，再跑 novel.py done")
 
     handover = named_section(status_text, "交接")
     if handover is None:
-        warnings.append(f"{STATUS} 没有“交接”一节（旧档案）：问作者后照模板补上")
+        errors.append(f"{STATUS} 没有“交接”一节：照模板补上")
     else:
-        if adopted and is_none(field_value(handover, "更新于")):
-            warnings.append("交接一节从没更新过：把上次对话里作者说过、还没写进档案的话补进去")
         size = len("\n".join(handover))
         if size > HANDOVER_CAP:
             warnings.append(f"交接一节有 {size} 字，超过 {HANDOVER_CAP}：已写进设定、规则或大纲的删掉，过时的挪走")
+        updated = handover_chapter(handover)
+        if latest and in_progress is None and (updated is None or updated < latest):
+            warnings.append(f"交接停在{f'第{updated}章后' if updated else '没更新过'}，正文已经到第{latest}章：先补上次对话里作者说过、还没写进档案的话")
+        if finishing and in_progress and (updated is None or updated < in_progress):
+            errors.append(f"交接的“更新于”还没到第{in_progress}章：把上次停在哪、作者这次说过的话、当前张力写进去")
+
+    if finishing and in_progress:
+        timeline_text = read(project, TIMELINE) or ""
+        filled = any(re.match(rf"^\s*[-*]\s*第0*{in_progress}章", line) and "待填写" not in line
+                     for line in timeline_text.splitlines())
+        if not filled:
+            errors.append(f"{TIMELINE} 里还没有第{in_progress}章")
+        outline = chapter_outline(read(project, OUTLINE) or "", in_progress)
+        if outline:
+            entries = (parse_entries(read(project, CHARACTERS) or "", CHARACTERS)
+                       + parse_entries(read(project, SETTINGS) or "", SETTINGS))
+            index = NameIndex(entries)
+            unknown = [name for name in split_names(field_value(outline[1], "出场"))
+                       if len(name) >= MIN_NAME and not index.knows(name)]
+            if unknown:
+                errors.append(f"第{in_progress}章细纲列的出场 {'、'.join(unknown)} 还没有条目：按条目格式补进 "
+                              f"{CHARACTERS} 或 {SETTINGS}（人物还要进 {CURRENT}），写别名")
+        stale = chapter_mentions_stale(project, in_progress)
+        if stale:
+            warnings.append(f"第{in_progress}章里出现的 {'、'.join(stale)}，人物现状的“最近更新”还没到第{in_progress}章："
+                            "他们这一章没变化就把最近更新改成这一章，有变化就补上")
 
     pending = project / PENDING_DIR
     if pending.is_dir():
-        stale = []
+        stale_drafts = []
         for path in sorted(pending.glob("*")):
             match = CHAPTER_FILE_RE.match(path.name)
             if path.is_file() and match and int(match.group(1)) <= latest:
-                stale.append(path.name)
-        if stale:
-            warnings.append(f"{PENDING_DIR}/ 里还有已采用章节的稿子：{'、'.join(stale)}（采用时没挪走，或者作者在改旧章）")
+                stale_drafts.append(path.name)
+        if stale_drafts:
+            warnings.append(f"{PENDING_DIR}/ 里还有已采用章节的稿子：{'、'.join(stale_drafts)}（作者在改旧章，还是采用时漏挪了）")
 
     outline_text = read(project, OUTLINE) or ""
     outlines = current_outlines(outline_text)
     outline_ids: dict[str, list[int]] = {}
     for number, title, lines in outlines:
-        if not field_value(lines, "出场"):
-            warnings.append(f"细纲「{title}」没有“出场”一行：资料包只能靠扫名字")
+        if not field_value(lines, "出场") or not field_value(lines, "伏笔"):
+            errors.append(f"细纲「{title}」缺“出场”或“伏笔”一行（没有就写“无”）")
         for fid in set(FORESHADOW_ID_RE.findall("\n".join(lines))):
             outline_ids.setdefault(fid, []).append(number)
 
@@ -530,7 +658,8 @@ def check_project(project: Path) -> tuple[list[str], list[str]]:
         duplicates = sorted(fid for fid, count in seen.items() if count > 1)
         if duplicates:
             errors.append(f"{FORESHADOW} 里编号重复：{'、'.join(duplicates)}")
-        open_ids = {entry.title for entry in entries if entry.section != "已收的"}
+        open_entries = [entry for entry in entries if entry.section != "已收的"]
+        open_ids = {entry.title for entry in open_entries}
         closed_ids = {entry.title for entry in entries if entry.section == "已收的"}
         for fid, chapters in sorted(outline_ids.items()):
             where = "、".join(f"第{n}章" for n in sorted(chapters))
@@ -539,26 +668,48 @@ def check_project(project: Path) -> tuple[list[str], list[str]]:
             elif fid not in open_ids:
                 warnings.append(f"{fid} 在{where}细纲里出现，记录里已经收掉了")
         if adopted:
-            unfilled = [entry.title for entry in entries
-                        if entry.section != "已收的" and "待填写" in entry.text]
+            no_link = [entry.title for entry in open_entries if not field_value(entry.lines, "涉及")]
+            if no_link:
+                errors.append(f"没收的伏笔缺“涉及”一行：{'、'.join(no_link)}（资料包靠它找伏笔）")
+            unfilled = [entry.title for entry in open_entries if "待填写" in entry.text]
             if unfilled:
                 warnings.append(f"没收的伏笔里还有“待填写”：{'、'.join(unfilled)}")
 
     characters = parse_entries(read(project, CHARACTERS) or "", CHARACTERS)
+    no_alias = [entry.title for entry in characters if not any(
+        FIELD_RE.match(line) and FIELD_RE.match(line).group(1).strip() == "别名" for line in entry.lines)]
+    if no_alias:
+        errors.append(f"{CHARACTERS} 里缺“别名”一行：{'、'.join(no_alias)}（没有别名写“无”）")
+    settings = [entry for entry in parse_entries(read(project, SETTINGS) or "", SETTINGS)
+                if entry.section == "重要地点和物品"]
+    no_alias = [entry.title for entry in settings if not any(
+        FIELD_RE.match(line) and FIELD_RE.match(line).group(1).strip() == "别名" for line in entry.lines)]
+    if no_alias:
+        errors.append(f"{SETTINGS} 的重要地点和物品里缺“别名”一行：{'、'.join(no_alias)}")
+
     current_text = read(project, CURRENT)
-    if current_text is not None and adopted:
+    if current_text is not None:
         current = parse_entries(current_text, CURRENT)
-        tracked = {entry.title for entry in current}
-        untracked = [entry.title for entry in characters if entry.title not in tracked]
-        if untracked:
-            warnings.append(f"{CHARACTERS} 里有、{CURRENT} 里没有：{'、'.join(untracked)}")
+        no_state = [entry.title for entry in current if not entry.field("状态")]
+        if no_state:
+            errors.append(f"{CURRENT} 里缺“状态”一行：{'、'.join(no_state)}")
+        if adopted:
+            tracked = {entry.title for entry in current}
+            untracked = [entry.title for entry in characters if entry.title not in tracked]
+            if untracked:
+                warnings.append(f"{CHARACTERS} 里有、{CURRENT} 里没有：{'、'.join(untracked)}")
         index = NameIndex(characters + current)
-        upcoming = "\n".join("\n".join(lines) for _, _, lines in outlines)
-        upcoming_names = set(index.scan(upcoming))
-        for entry in current:
-            state = entry.field("状态")
-            if state[:2] in ("死亡", "失踪") and entry.title in upcoming_names:
-                warnings.append(f"{entry.title} 在记录里是“{state}”，却出现在当前细纲里")
+        for number, title, lines in outlines:
+            special = {index.canonical.get(name, name) for name in
+                       split_names(re.sub(r"[（(][^）)]*[）)]", "", field_value(lines, "特殊出场")))}
+            named = set(index.scan("\n".join(lines[1:])))
+            for entry in current:
+                state = entry.field("状态")
+                if state[:2] not in ("死亡", "失踪") or entry.title not in named or entry.title in special:
+                    continue
+                message = (f"{entry.title} 在记录里是“{state}”，却出现在细纲「{title}」里：是回忆、假死这类有意安排，"
+                           f"就在那章细纲加一行“- 特殊出场：{entry.title}（原因）”；不是就问作者")
+                (errors if number == latest + 1 else warnings).append(message)
 
     for name, cap in SIZE_CAPS.items():
         text = read(project, name)
