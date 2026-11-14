@@ -82,6 +82,17 @@
       "category": "research",
       "tags": ["macro", "china", "monetary-policy", "dollar", "research"],
       "skills": ["./skills/miao-yanliang-macro-lens"]
+    },
+    {
+      "name": "webnovel-workflow",
+      "source": "./",
+      "strict": false,
+      "description": "带作者从零开书、一章一章写完长篇中文网文：项目档案保存状态，只在方向性决定上停下并附推荐，独立读者自检，从作者的改稿里学。改编自阿序AI 长篇小说工作流 4.0，CC BY-NC 4.0，不可商用分发。",
+      "version": "0.2.0",
+      "license": "CC-BY-NC-4.0",
+      "category": "writing",
+      "tags": ["novel", "webnovel", "fiction", "writing", "chinese"],
+      "skills": ["./skills/webnovel-workflow"]
     }
   ]
 }

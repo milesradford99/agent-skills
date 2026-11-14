@@ -40,4 +40,4 @@ AI assistance is welcome. These skills were written with it. In return:
 3. For a behavior change, bump the plugin `version` in `.claude-plugin/marketplace.json` and add an entry under "Unreleased" in `CHANGELOG.md`.
 4. Open a PR describing what an agent will now do differently, and why.
 
-Contributions are accepted under the project's [MIT license](LICENSE).
+Contributions are accepted under the project's [MIT license](LICENSE), except changes to `skills/webnovel-workflow/`, which are accepted under that folder's [CC BY-NC 4.0 license](skills/webnovel-workflow/LICENSE).
