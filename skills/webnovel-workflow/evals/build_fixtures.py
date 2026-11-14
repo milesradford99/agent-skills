@@ -395,8 +395,31 @@ def fixture_interview(out):
     return project
 
 
+def fixture_adopt(out):
+    """Chapter 4 candidate is ready and the author is about to adopt it."""
+    project = fixture_resume(out)
+    write(project, "待确认/第004章-v2-候选.md", CHAPTER_4)
+    set_status(project, [
+        ("正文进度", "正在写", "第4章"),
+        ("正文进度", "这一章的进度", "待作者确认"),
+        ("正文进度", "这一章的自检", "自查"),
+        ("正文进度", "当前唯一候选", "待确认/第004章-v2-候选.md"),
+        ("现在在哪", "下一步", "等作者确认第4章候选"),
+        ("交接", "上次停在哪", "第4章 v2 候选交给作者了，等他确认"),
+    ])
+    return project
+
+
+def fixture_drift(out):
+    """正文 has chapter 4 (dropped in by the author outside the workflow); the status still says 3."""
+    project = fixture_resume(out)
+    write(project, "正文/第004章.md", CHAPTER_4)
+    return project
+
+
 def main():
-    builders = {"续写": fixture_resume, "回写中断": fixture_interrupted, "死人出场": fixture_dead, "访谈中断": fixture_interview}
+    builders = {"续写": fixture_resume, "回写中断": fixture_interrupted, "死人出场": fixture_dead, "访谈中断": fixture_interview,
+                "作者采用": fixture_adopt, "状态漂移": fixture_drift}
     for name, build in builders.items():
         folder = OUT / name
         if folder.exists():

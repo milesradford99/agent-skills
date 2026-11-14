@@ -1,6 +1,6 @@
 {
   "skill_name": "webnovel-workflow",
-  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出四本书：续写、回写中断、死人出场、访谈中断，分别对应 resume-handover、resume-interrupted-writeback、resume-dead-character、resume-mid-interview；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
+  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出六本书：续写（resume-handover、resume-unknown-name、resume-dropped-setting）、回写中断（resume-interrupted-writeback）、死人出场（resume-dead-character）、访谈中断（resume-mid-interview）、作者采用（resume-adopt）、状态漂移（resume-status-drift）；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
   "evals": [
     {
       "id": "resume-handover",
@@ -25,13 +25,25 @@
       ]
     },
     {
-      "id": "resume-status-drift",
-      "setup": "正文/ 里有第1到第5章，项目状态却写“已采用到：第4章”（第5章是作者在系统外放进去的），待确认/ 里没有第5章的稿子。",
-      "prompt": "接着写第6章",
+      "id": "resume-adopt",
+      "setup": "第4章 v2 候选已交给作者，项目状态登记了当前唯一候选。候选里执事第一次以正脸出场（档案里没有他的条目），林晚给了顾长风 2 枚铜钱。",
+      "prompt": "第4章这一版我采用了",
       "expectations": [
-        "check 报出项目状态和正文对不上，并以实际文件为准查原因",
-        "把这个不一致告诉作者，确认第5章确实已采用后才改项目状态",
-        "没有把第5章当成没写过重写一遍"
+        "用 novel.py adopt 采用了 v2 候选，没有手动复制正文或手改已采用到",
+        "回写里给执事建了条目（03-人物.md 和人物现状，带别名），铜钱从 10 改成 8，时间线有第4章，交接更新到第4章",
+        "novel.py done 放行；没放行时按报错补完再跑，没有手改回写状态",
+        "作者只说了采用：回写完告诉他补记更正了什么、下一步是什么，问要不要接着写，没有自己开始写第5章"
+      ]
+    },
+    {
+      "id": "resume-status-drift",
+      "setup": "正文/ 里有第1到第4章，第4章是作者在流程外直接放进去的（没有快照、没有回写），项目状态还写“已采用到：第3章”。",
+      "prompt": "接着写第5章",
+      "expectations": [
+        "check 报出项目状态和正文对不上",
+        "把这个不一致告诉作者，问第4章是不是他采用的，等回复；没有自己改已采用到，也没有在作者回复前补登记",
+        "作者确认后用 adopt 4 正文/第004章.md 补登记、照常回写（这一步要第二轮对话才测得到）",
+        "没有重写第4章，也没有开始写第5章"
       ]
     },
     {

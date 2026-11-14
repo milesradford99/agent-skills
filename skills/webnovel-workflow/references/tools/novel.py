@@ -178,8 +178,18 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
     target = body / f"{chapter_name(number)}.md"
     adopted = context.adopted_chapters(project)
     latest = adopted[-1] if adopted else 0
-    if target.exists() and not replace:
-        raise FileExistsError(f"{target} 已经存在；确认要换版本就加 --replace，旧正文会留档")
+    claimed = context.chapter_number(context.status_fields(status_text).get("已采用到", "")) or 0
+    register = target.exists() and source.resolve() == target.resolve()
+    if register:
+        # The author put this chapter into 正文/ outside the workflow and has confirmed it:
+        # open its write-back without copying anything.
+        if replace:
+            raise ValueError("补登记不用加 --replace")
+        if claimed != number - 1:
+            raise ValueError(f"项目状态写已采用到第{claimed}章，补登记只能登记第{claimed + 1}章")
+    elif target.exists() and not replace:
+        raise FileExistsError(f"{target} 已经存在；确认要换版本就加 --replace，旧正文会留档。"
+                              f"作者在流程外放进去、确认采用的，用 adopt {number} {BODY_DIR}/{target.name} 补登记")
     if not target.exists() and number != latest + 1:
         raise ValueError(f"正文已采用到第{latest}章，下一章应该是第{latest + 1}章，不是第{number}章")
 
@@ -208,10 +218,11 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
     body.mkdir(parents=True, exist_ok=True)
     done.mkdir(parents=True, exist_ok=True)
     backup = None
-    if target.exists():
-        backup = free_path(done / f"{chapter_name(number)}-旧正文.md")
-        shutil.move(str(target), str(backup))
-    shutil.copyfile(source, target)
+    if not register:
+        if target.exists():
+            backup = free_path(done / f"{chapter_name(number)}-旧正文.md")
+            shutil.move(str(target), str(backup))
+        shutil.copyfile(source, target)
     moved = []
     for draft in sorted(pending.glob("*")):
         match = CHAPTER_RE.match(draft.name)
@@ -220,7 +231,8 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
             shutil.move(str(draft), str(destination))
             moved.append(destination.name)
     status_path.write_text(updated, encoding="utf-8")
-    return {"target": target, "chars": count_chars(text), "moved": moved, "backup": backup, "snapshot": snapshot}
+    return {"target": target, "chars": count_chars(text), "moved": moved, "backup": backup, "snapshot": snapshot,
+            "registered": register}
 
 
 def finish_writeback(project: Path) -> dict[str, object]:
@@ -290,7 +302,7 @@ def cmd_count(args: argparse.Namespace) -> int:
 
 def cmd_adopt(args: argparse.Namespace) -> int:
     result = adopt_chapter(Path(args.project), args.chapter, Path(args.file), args.replace)
-    print(f"正文：{result['target']}（{result['chars']} 字）")
+    print(f"正文：{result['target']}（{result['chars']} 字）{'，补登记，正文没动' if result['registered'] else ''}")
     if result["backup"]:
         print(f"旧正文留档：{result['backup']}")
     moved = result["moved"]

@@ -232,6 +232,7 @@ class BriefTest(unittest.TestCase):
         self.assertIn("第003章：受伤", brief.text)
         self.assertNotIn("第004章：待填写", brief.text)
         self.assertIn("第3章结尾", brief.text)
+        self.assertIn("第003章.md 全文", brief.text, "a short previous chapter is labelled as whole")
         self.assertIn("正文/第002章.md", brief.text)
 
     def test_write_brief_goes_to_pending_and_adopt_files_it_away(self):
@@ -339,6 +340,21 @@ class CheckTest(unittest.TestCase):
         current = self.project / "记录-人物现状.md"
         current.write_text(current.read_text(encoding="utf-8") + "\n## 执事\n- 状态：在场\n- 最近更新：第4章\n", encoding="utf-8")
         self.assertTrue(novel.finish_writeback(self.project)["closed"])
+
+    def test_adopt_registers_a_chapter_the_author_put_in_body(self):
+        sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n")
+        dropped_in = write(self.project, "正文/第004章.md", "作者自己写的第四章。")
+        errors, _ = context.check_project(self.project)
+        self.assertTrue(any("已采用到第3章" in line for line in errors))
+        with self.assertRaises(FileExistsError):
+            novel.adopt_chapter(self.project, 4, write(self.project, "待确认/第004章-v2-候选.md", "别的稿。"))
+        result = novel.adopt_chapter(self.project, 4, dropped_in)
+        self.assertTrue(result["registered"])
+        self.assertEqual(dropped_in.read_text(encoding="utf-8"), "作者自己写的第四章。")
+        status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
+        self.assertEqual(context.status_fields(status)["已采用到"], "第4章")
+        self.assertEqual(context.writeback_in_progress(status), 4)
 
     def test_format_rules_are_errors(self):
         sample_book(self.project)

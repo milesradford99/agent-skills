@@ -333,10 +333,13 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
     index = NameIndex(character_entries + current_entries + setting_entries)
 
     previous_text = ""
+    previous_whole = False
     previous_path = project / BODY_DIR / f"第{number - 1:03d}章.md"
     if number > 1:
         if previous_path.is_file():
-            previous_text = tail(prose(previous_path.read_text(encoding="utf-8-sig")), PREVIOUS_TAIL)
+            full = prose(previous_path.read_text(encoding="utf-8-sig")).strip()
+            previous_text = tail(full, PREVIOUS_TAIL)
+            previous_whole = previous_text == full
         else:
             notes.append(f"没有上一章正文 {BODY_DIR}/{previous_path.name}")
 
@@ -400,7 +403,8 @@ def build_brief(project: Path, number: int, today: date | None = None) -> Brief:
         add("交接（上一次对话留下的）", "\n".join(handover_lines))
     add(f"这一章的细纲：{outline[0]}", "\n".join(outline_lines[1:]))
     if previous_text:
-        add(f"上一章结尾（{BODY_DIR}/{previous_path.name} 最后约 {len(previous_text)} 字）", previous_text)
+        label = "全文" if previous_whole else f"最后约 {len(previous_text)} 字"
+        add(f"上一章{'' if previous_whole else '结尾'}（{BODY_DIR}/{previous_path.name} {label}）", previous_text)
     add("最近的时间线", "\n".join(timeline))
     add(f"人物（{CHARACTERS}）", "\n\n".join(entry.as_block() for entry in characters))
     add(f"人物现状（{CURRENT}）", "\n\n".join(entry.as_block() for entry in current))
