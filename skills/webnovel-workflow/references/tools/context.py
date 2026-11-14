@@ -759,6 +759,8 @@ def status_card(project: Path) -> dict[str, object]:
     for entry in parse_entries(read(project, FORESHADOW) or "", FORESHADOW):
         if entry.section == "已收的" or not FORESHADOW_ID_RE.fullmatch(entry.title):
             continue
+        if "人物名" in entry.field("涉及") or "待填写" in entry.field("内容"):
+            continue  # the template's placeholder, not a real thread
         planted = chapter_number(entry.field("埋在第几章，原文怎么写的（一句）") or entry.field("埋在第几章") or "")
         threads.append((planted if planted is not None else 10**6, entry.title))
     threads.sort()

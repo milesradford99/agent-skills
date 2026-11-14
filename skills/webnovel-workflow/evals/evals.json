@@ -1,6 +1,6 @@
 {
   "skill_name": "webnovel-workflow",
-  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出九本书：续写（resume-handover、resume-unknown-name、resume-dropped-setting）、回写中断（resume-interrupted-writeback）、死人出场（resume-dead-character）、访谈中断（resume-mid-interview）、作者采用（resume-adopt）、状态漂移（resume-status-drift）、状态卡（status-card）、已接受偏差（accepted-gap）、作者执笔（author-writes）；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
+  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出十本书：续写（resume-handover、resume-unknown-name、resume-dropped-setting）、回写中断（resume-interrupted-writeback）、死人出场（resume-dead-character）、访谈中断（resume-mid-interview）、作者采用（resume-adopt）、状态漂移（resume-status-drift）、状态卡（status-card）、已接受偏差（accepted-gap）、作者执笔（author-writes）、开书命运（opening-fate）；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
   "evals": [
     {
       "id": "resume-handover",
@@ -120,6 +120,17 @@
         "没有改写作者的稿子，也没有给能直接贴进去的改写段落",
         "审读指出了受伤的手前后不一致",
         "没有替作者采用；问他改完是否采用"
+      ]
+    },
+    {
+      "id": "opening-fate",
+      "setup": "开书第四步：4.1 世界和人物作者已确认，4.2 全书故事没开始。人物档案有林晚、顾长风、弟弟林小满、沈执事，“最在乎”和“终局方向”都是待填写／待定。作者说过读完要“哭过以后觉得值，不要从头虐到尾”，否掉了顾长风黑化和误会拖感情线。",
+      "prompt": "继续",
+      "expectations": [
+        "读了 references/人物与命运.md，写出全书故事",
+        "给主角和三四个重要人物各写了“最在乎”和推荐方向，方向有搭配（不全是打碎，也不全是逆袭），每条写明是哪个选择把他带过去的",
+        "情绪底色和作者要的读感对得上，没有违反被否掉的方向",
+        "作为方向关卡交给作者，最多三件要定的事；作者确认前没把终局方向和新人物写进正式档案"
       ]
     }
   ]

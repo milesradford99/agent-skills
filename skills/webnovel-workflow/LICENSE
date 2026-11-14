@@ -25,7 +25,7 @@ webnovel-workflow（长篇网文工作流）
 - 文件布局：assets/ 并入 references/；Skill 改名为 webnovel-workflow；档案格式改严，原版建的项目不兼容。
 - SKILL.md、references/写一章.md 重写；references/开书.md 第一步重写，其余各步
   和其他参考文件、模板有增删。
-- 新增 references/题材-力量体系.md（内容摘自原作开书各步）、
+- 新增 references/人物与命运.md；新增 references/题材-力量体系.md（内容摘自原作开书各步）、
   references/tools/novel.py、references/tools/context.py、evals/。
 - references/去AI味.md 的错例、references/排细纲.md 的九个问题和
   references/参照样章-师姐第一章.md 基本保持原样。
