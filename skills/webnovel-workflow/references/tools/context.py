@@ -66,6 +66,7 @@ CHAPTER_FILE_RE = re.compile(r"^第0*(\d+)章")
 FORESHADOW_ID_RE = re.compile(r"\bF\d{3,}\b")
 NUMBER_RE = re.compile(r"\d+")
 SPLIT_RE = re.compile(r"[、，,；;/\s]+")
+FIELD_LINE_RE = re.compile(r"^\s*[-*]\s+\S")
 
 
 @dataclass
@@ -599,10 +600,19 @@ def check_project(project: Path, finishing: bool = False) -> tuple[list[str], li
                       f"{'、'.join(changed) or '无'}；还没动 {'、'.join(unchanged) or '无'}。"
                       "按写一章第九节补完，再跑 novel.py done")
 
+    for name in ("作者接受的偏差", "最近的决定"):
+        if named_section(status_text, name) is None:
+            errors.append(f"{STATUS} 没有“{name}”一节：照模板补上")
+    if not fields.get("合作方式"):
+        errors.append(f"{STATUS} 的“现在在哪”缺“合作方式”一行：照模板补上")
     handover = named_section(status_text, "交接")
     if handover is None:
         errors.append(f"{STATUS} 没有“交接”一节：照模板补上")
     else:
+        decisions = named_section(status_text, "最近的决定") or []
+        listed = [line for line in decisions if FIELD_LINE_RE.match(line) and not is_none(line.lstrip("-* ").strip())]
+        if len(listed) > 10:
+            warnings.append(f"“最近的决定”有 {len(listed)} 条，超过十条：更早的挪进卷总结或开书记录")
         size = len("\n".join(handover))
         if size > HANDOVER_CAP:
             warnings.append(f"交接一节有 {size} 字，超过 {HANDOVER_CAP}：已写进设定、规则或大纲的删掉，过时的挪走")
@@ -646,9 +656,17 @@ def check_project(project: Path, finishing: bool = False) -> tuple[list[str], li
     outline_text = read(project, OUTLINE) or ""
     outlines = current_outlines(outline_text)
     outline_ids: dict[str, list[int]] = {}
+    known = NameIndex(parse_entries(read(project, CHARACTERS) or "", CHARACTERS)
+                      + parse_entries(read(project, SETTINGS) or "", SETTINGS))
     for number, title, lines in outlines:
         if not field_value(lines, "出场") or not field_value(lines, "伏笔"):
             errors.append(f"细纲「{title}」缺“出场”或“伏笔”一行（没有就写“无”）")
+        if number > latest:
+            unknown = [name for name in split_names(field_value(lines, "出场"))
+                       if len(name) >= MIN_NAME and not known.knows(name)]
+            if unknown:
+                warnings.append(f"细纲「{title}」列的出场 {'、'.join(unknown)} 还没有条目：已经在正文里出场过的照正文补上，"
+                                "新人物在这一章回写时补（done 会查）")
         for fid in set(FORESHADOW_ID_RE.findall("\n".join(lines))):
             outline_ids.setdefault(fid, []).append(number)
 
@@ -723,3 +741,42 @@ def check_project(project: Path, finishing: bool = False) -> tuple[list[str], li
     if len(re.findall(r"^\s*[-*]\s*第0*\d+章", timeline_text, flags=re.M)) > 60:
         warnings.append(f"{TIMELINE} 超过 60 章没归档：一卷写完要整段挪进卷总结")
     return errors, warnings
+
+
+def status_card(project: Path) -> dict[str, object]:
+    """The numbers a status card needs, read from the archive. Read-only."""
+    status_text = read(project, STATUS) or ""
+    fields = status_fields(status_text)
+    adopted = adopted_chapters(project)
+    latest = adopted[-1] if adopted else 0
+    chars = 0
+    for number in adopted:
+        chars += sum(1 for ch in prose((project / BODY_DIR / f"第{number:03d}章.md").read_text(encoding="utf-8-sig"))
+                     if not ch.isspace())
+    outlines = [n for n, _, _ in current_outlines(read(project, OUTLINE) or "")]
+    ahead = [n for n in outlines if n > latest]
+    threads = []
+    for entry in parse_entries(read(project, FORESHADOW) or "", FORESHADOW):
+        if entry.section == "已收的" or not FORESHADOW_ID_RE.fullmatch(entry.title):
+            continue
+        planted = chapter_number(entry.field("埋在第几章，原文怎么写的（一句）") or entry.field("埋在第几章") or "")
+        threads.append((planted if planted is not None else 10**6, entry.title))
+    threads.sort()
+    handover = named_section(status_text, "交接")
+    accepted = named_section(status_text, "作者接受的偏差") or []
+    errors, warnings = check_project(project)
+    return {
+        "title": fields.get("书名", ""),
+        "mode": fields.get("合作方式", "").split("（")[0],
+        "stage": fields.get("当前阶段", "").split("（")[0],
+        "next": fields.get("下一步", ""),
+        "chapters": len(adopted), "latest": latest, "chars": chars,
+        "outline_ahead": ahead,
+        "open_threads": [title for _, title in threads],
+        "oldest_threads": [(title, planted) for planted, title in threads[:3] if planted < 10**6],
+        "handover_chapter": handover_chapter(handover) if handover else None,
+        "target": chapter_number(fields.get("每章目标字数", "")) or 0,
+        "accepted": [line.lstrip("-* ").strip() for line in accepted[1:]
+                     if FIELD_LINE_RE.match(line) and not is_none(line.lstrip("-* ").strip())],
+        "errors": errors, "warnings": warnings,
+    }

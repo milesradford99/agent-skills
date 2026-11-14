@@ -190,9 +190,8 @@ def sample_book(project):
     status = (Path(project) / "01-项目状态.md").read_text(encoding="utf-8")
     status = status.replace("- 已采用到：无（第几章）", "- 已采用到：第3章")
     status = status.replace("- 定稿参照章：无（前三章采用后由作者挑一章，写明第几章；管腔调，可以换）", "- 定稿参照章：第2章")
-    status = status.replace("- 更新于：无（日期，第几章前后）", "- 更新于：11-13，第3章后")
-    status = status.replace("- 作者最近的指示：无（每条写日期，比如“11-13：这一卷感情线放慢，第40章前不让两人和好”）",
-                            "- 作者最近的指示：11-13：第4章别让林晚当场揭穿")
+    status = context.set_field(status, "交接", "更新于", "第3章后，11-13")
+    status = context.set_field(status, "交接", "作者最近的指示", "11-13：第4章别让林晚当场揭穿")
     write(project, "01-项目状态.md", status)
 
 
@@ -355,6 +354,38 @@ class CheckTest(unittest.TestCase):
         status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
         self.assertEqual(context.status_fields(status)["已采用到"], "第4章")
         self.assertEqual(context.writeback_in_progress(status), 4)
+
+    def test_status_card_has_the_numbers_a_card_needs(self):
+        sample_book(self.project)
+        status = self.project / "01-项目状态.md"
+        status.write_text(status.read_text(encoding="utf-8").replace(
+            "## 作者接受的偏差\n作者看过、说了“这个不管”“先这样”的问题，一条一行，写哪天定的。以后不再提，除非它会坏的事变了。\n- 无",
+            "## 作者接受的偏差\n作者看过、说了“这个不管”“先这样”的问题，一条一行，写哪天定的。以后不再提，除非它会坏的事变了。\n- 11-13：每章三四百字就行，不按目标"), encoding="utf-8")
+        card = context.status_card(self.project)
+        self.assertEqual(card["mode"], "带着写")
+        self.assertEqual(card["chapters"], 3)
+        self.assertEqual(card["outline_ahead"], [4, 5])
+        self.assertIn("F001", card["open_threads"])
+        self.assertEqual(card["handover_chapter"], 3)
+        self.assertEqual(card["accepted"], ["11-13：每章三四百字就行，不按目标"])
+        self.assertEqual(novel.main(["status", str(self.project)]), 0)
+
+    def test_missing_collaboration_sections_are_errors(self):
+        sample_book(self.project)
+        status = (self.project / "01-项目状态.md").read_text(encoding="utf-8")
+        start, end = status.index("## 作者接受的偏差"), status.index("## 开书进度")
+        status = status[:start] + status[end:]
+        status = status.replace("- 合作方式：带着写（带着写／搭档／作者执笔；作者的合作偏好也记在这里，比如“细纲不用给我看”“不用解释为什么”）\n", "")
+        write(self.project, "01-项目状态.md", status)
+        errors, _ = context.check_project(self.project)
+        joined = "\n".join(errors)
+        for expected in ("作者接受的偏差", "最近的决定", "合作方式"):
+            self.assertIn(expected, joined)
+
+    def test_check_warns_about_upcoming_outline_names_without_entries(self):
+        sample_book(self.project)
+        _, warnings = context.check_project(self.project)
+        self.assertTrue(any("执事" in line and "还没有条目" in line for line in warnings))
 
     def test_format_rules_are_errors(self):
         sample_book(self.project)

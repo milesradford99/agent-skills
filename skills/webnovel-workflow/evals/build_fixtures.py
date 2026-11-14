@@ -417,9 +417,56 @@ def fixture_drift(out):
     return project
 
 
+ACCEPTED_HEADER = "## 作者接受的偏差\n作者看过、说了“这个不管”“先这样”的问题，一条一行，写哪天定的。以后不再提，除非它会坏的事变了。\n- 无"
+DECISIONS_HEADER = "## 最近的决定\n最近十个决定，每条：定了什么／谁定的（作者、作者按推荐确认、按推荐）／一句理由。更早的挪进卷总结或开书记录。\n- 无"
+
+
+def replace_in_status(project, old, new):
+    path = project / "01-项目状态.md"
+    text = path.read_text(encoding="utf-8")
+    assert old in text, old[:30]
+    path.write_text(text.replace(old, new), encoding="utf-8")
+
+
+def fixture_status_card(out):
+    project = fixture_resume(out)
+    replace_in_status(project, DECISIONS_HEADER, DECISIONS_HEADER.replace("- 无",
+        "- 第4–5章细纲按推荐排／作者按推荐确认／先让两人在石室重逢\n- 定稿参照章用第2章／作者／他最喜欢第2章的节奏"))
+    return project
+
+
+def fixture_accepted(out):
+    project = fixture_resume(out)
+    replace_in_status(project, ACCEPTED_HEADER, ACCEPTED_HEADER.replace("- 无",
+        "- 11-13：每章三四百字就行，不用按 1500 写（作者说手机上读短章更顺）\n- 11-13：“本书的写法”先不总结，写满十章再说\n- 11-13：周管事这条线先放着，以后再说"))
+    replace_in_status(project, "- 合作方式：带着写（带着写／搭档／作者执笔；作者的合作偏好也记在这里，比如“细纲不用给我看”“不用解释为什么”）",
+                      "- 合作方式：搭档（不用解释为什么；待确认事项最多一条）")
+    return project
+
+
+AUTHOR_DRAFT_4 = CHAPTER_4.replace("右手的口子", "左手的口子") if "右手的口子" in CHAPTER_4 else CHAPTER_4.replace(
+    "林晚抱着膝盖坐在石室对面的草垛后头，已经守了两个时辰。腿麻了，她也不动。",
+    "林晚抱着膝盖坐在石室对面的草垛后头，已经守了两个时辰。腿麻了，她也不动。左手上那道药锄划的口子一跳一跳地疼。")
+
+
+def fixture_author_writes(out):
+    project = fixture_resume(out)
+    replace_in_status(project, "- 合作方式：带着写（带着写／搭档／作者执笔；作者的合作偏好也记在这里，比如“细纲不用给我看”“不用解释为什么”）",
+                      "- 合作方式：作者执笔（正文我自己写，你帮我审读和记账）")
+    write(project, "待确认/第004章-作者稿.md", AUTHOR_DRAFT_4)
+    set_status(project, [
+        ("正文进度", "正在写", "第4章"),
+        ("正文进度", "这一章的进度", "作者交稿，待审读"),
+        ("正文进度", "当前唯一候选", "待确认/第004章-作者稿.md"),
+        ("现在在哪", "下一步", "审读作者交来的第4章"),
+    ])
+    return project
+
+
 def main():
     builders = {"续写": fixture_resume, "回写中断": fixture_interrupted, "死人出场": fixture_dead, "访谈中断": fixture_interview,
-                "作者采用": fixture_adopt, "状态漂移": fixture_drift}
+                "作者采用": fixture_adopt, "状态漂移": fixture_drift,
+                "状态卡": fixture_status_card, "已接受偏差": fixture_accepted, "作者执笔": fixture_author_writes}
     for name, build in builders.items():
         folder = OUT / name
         if folder.exists():

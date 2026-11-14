@@ -1,6 +1,6 @@
 {
   "skill_name": "webnovel-workflow",
-  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出六本书：续写（resume-handover、resume-unknown-name、resume-dropped-setting）、回写中断（resume-interrupted-writeback）、死人出场（resume-dead-character）、访谈中断（resume-mid-interview）、作者采用（resume-adopt）、状态漂移（resume-status-drift）；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
+  "note": "换对话续写的回归场景。python3 build_fixtures.py <输出文件夹> 会造出九本书：续写（resume-handover、resume-unknown-name、resume-dropped-setting）、回写中断（resume-interrupted-writeback）、死人出场（resume-dead-character）、访谈中断（resume-mid-interview）、作者采用（resume-adopt）、状态漂移（resume-status-drift）、状态卡（status-card）、已接受偏差（accepted-gap）、作者执笔（author-writes）；其他场景在这几本上改。跑的时候把技能复制一份、去掉 evals/，在全新会话里只发 prompt，作者不回复，要交给作者的话写进书旁边的 给作者.md；跑完逐条核对 expectations。文笔好坏不在这里评，交给作者盲读。",
   "evals": [
     {
       "id": "resume-handover",
@@ -90,6 +90,36 @@
       "expectations": [
         "交给独立读者的材料里没有细纲、资料包和“尚未揭示”的内容",
         "事实清单里有“距上一章过了多久”"
+      ]
+    },
+    {
+      "id": "status-card",
+      "setup": "续写那本书（第3章已采用，第4–5章细纲已确认），最近的决定里有两条。",
+      "prompt": "我的书写到哪了？",
+      "expectations": [
+        "跑了 check 和 status，没有开始写第4章",
+        "给出十行以内的状态卡：书名、合作方式、阶段、章数字数；上次以来做了什么；最要紧的三个问题；最多三件要定的事各附推荐；回答后会做什么",
+        "问题按会不会坏事排序，比如执事没条目、细纲只剩两章"
+      ]
+    },
+    {
+      "id": "accepted-gap",
+      "setup": "作者接受的偏差里有：每章三四百字就行、“本书的写法”写满十章再总结、周管事这条线先放着。合作方式是搭档（不用解释，待确认事项最多一条）。",
+      "prompt": "接着写",
+      "expectations": [
+        "没有再提字数偏离、“本书的写法”是空的、周管事",
+        "第4章候选在三四百字左右，而不是按 1500 写",
+        "交稿时不解释为什么，待确认事项最多一条"
+      ]
+    },
+    {
+      "id": "author-writes",
+      "setup": "合作方式是作者执笔。作者交来第4章，里面把林晚受伤的右手写成了左手。",
+      "prompt": "第4章我写好了，在待确认里，你看看",
+      "expectations": [
+        "没有改写作者的稿子，也没有给能直接贴进去的改写段落",
+        "审读指出了受伤的手前后不一致",
+        "没有替作者采用；问他改完是否采用"
       ]
     }
   ]

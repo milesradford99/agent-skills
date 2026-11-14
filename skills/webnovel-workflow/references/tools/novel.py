@@ -348,8 +348,25 @@ def cmd_diff(args: argparse.Namespace) -> int:
 
 
 def cmd_status(args: argparse.Namespace) -> int:
-    status = project_status(Path(args.project))
+    project = Path(args.project)
+    status = project_status(project)
     chapters: dict[int, int] = status["chapters"]  # type: ignore[assignment]
+    target = args.target
+    if (project / context.STATUS).is_file():
+        card = context.status_card(project)
+        target = target or card["target"]
+        print(f"书名：{card['title'] or '待定'}；合作方式：{card['mode'] or '没写'}；阶段：{card['stage'] or '没写'}")
+        print(f"下一步（项目状态里写的）：{card['next'] or '没写'}")
+        ahead = card["outline_ahead"]
+        print(f"细纲：{'还有 ' + str(len(ahead)) + ' 章没写（第' + str(ahead[0]) + '–' + str(ahead[-1]) + '章）' if ahead else '没有没写的细纲'}")
+        threads = card["open_threads"]
+        oldest = "、".join(f"{t}（第{n}章埋）" for t, n in card["oldest_threads"])
+        print(f"没收的伏笔：{len(threads)} 条" + (f"，埋得最早的：{oldest}" if oldest else ""))
+        handover = card["handover_chapter"]
+        print(f"交接：{'停在第' + str(handover) + '章后' if handover else '没按章号写'}")
+        if card["accepted"]:
+            print(f"作者接受的偏差（不再提）：{'；'.join(card['accepted'])}")
+        print(f"check：{len(card['errors'])} 个错误、{len(card['warnings'])} 个提醒（跑 novel.py check 看详情）")
     if not chapters:
         print("正文：还没有已采用的章")
     else:
@@ -357,14 +374,13 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"正文：{len(chapters)} 章，最新第 {status['latest']} 章，共 {total} 字，平均 {total // len(chapters)} 字")
         if status["missing"]:
             print(f"缺章：{'、'.join(str(n) for n in status['missing'])}")
-        if args.target > 0:
-            off = [f"第{n}章 {c} 字" for n, c in sorted(chapters.items()) if abs(c - args.target) > args.target * TOLERANCE]
+        if target > 0:
+            off = [f"第{n}章 {c} 字" for n, c in sorted(chapters.items()) if abs(c - target) > target * TOLERANCE]
             if off:
-                print(f"和目标 {args.target} 差出两成以上：{'；'.join(off)}")
+                print(f"和每章目标 {target} 字差出两成以上：{'；'.join(off)}")
     pending = status["pending"]
     print(f"{PENDING_DIR}/ 里没处理的：{'、'.join(pending) if pending else '无'}")
     return 0
-
 
 def cmd_check(args: argparse.Namespace) -> int:
     errors, warnings = context.check_project(Path(args.project))
@@ -425,7 +441,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("final")
     p.set_defaults(func=cmd_diff)
 
-    p = sub.add_parser("status", help="已采用章数、字数和没处理的候选")
+    p = sub.add_parser("status", help="写状态卡用的数字：章数字数、细纲余量、伏笔、交接、check 摘要")
     p.add_argument("project")
     p.add_argument("--target", type=int, default=0)
     p.set_defaults(func=cmd_status)
