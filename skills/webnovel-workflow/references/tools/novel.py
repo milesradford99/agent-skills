@@ -6,9 +6,12 @@
     novel.py adopt  <project> <chapter> <file>     file an adopted chapter, archive its drafts
     novel.py diff   <candidate> <final>            list what the author changed, by paragraph
     novel.py status <project> [--target N]         adopted chapters, sizes, pending drafts
+    novel.py check  <project>                      read-only check of status, records and sizes
+    novel.py brief  <project> <chapter>            write the chapter's context pack to 待确认/
 
 Nothing here deletes a file, and nothing edits 01-项目状态.md or the 记录-*.md
 records: those describe the story and stay with the agent and the author.
+`check` and `brief` live in context.py, next to this file.
 """
 
 from __future__ import annotations
@@ -19,6 +22,9 @@ import re
 import shutil
 import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import context  # noqa: E402
 
 REFERENCES = Path(__file__).resolve().parent.parent
 TEMPLATES = REFERENCES / "templates"
@@ -255,6 +261,39 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check(args: argparse.Namespace) -> int:
+    errors, warnings = context.check_project(Path(args.project))
+    for line in errors:
+        print(f"错误：{line}")
+    for line in warnings:
+        print(f"提醒：{line}")
+    if not errors and not warnings:
+        print("没查出问题")
+    else:
+        print(f"共 {len(errors)} 个错误、{len(warnings)} 个提醒。错误先处理完再动笔。")
+    return 1 if errors else 0
+
+
+def cmd_brief(args: argparse.Namespace) -> int:
+    project = Path(args.project)
+    if args.stdout:
+        print(context.build_brief(project, args.chapter).text, end="")
+        return 0
+    path, brief = context.write_brief(project, args.chapter, Path(args.out) if args.out else None)
+    manifest = brief.manifest
+    print(f"资料包：{path}（{manifest['chars']} 字）")
+    print(f"带上的条目：{'、'.join(manifest['mentioned']) or '无'}；伏笔：{'、'.join(manifest['threads']) or '无'}")
+    if not manifest["outline"]:
+        print(f"注意：{context.OUTLINE} 里没有第{args.chapter}章的细纲")
+    if manifest["not_found"]:
+        print(f"没找到条目的名字：{'、'.join(manifest['not_found'])}")
+    if manifest["unknown_ids"]:
+        print(f"细纲提到、没收的伏笔里没有：{'、'.join(manifest['unknown_ids'])}")
+    for flag in manifest["flagged"]:
+        print(f"注意：{flag}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="长篇网文项目档案的记账工具")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -285,6 +324,17 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("project")
     p.add_argument("--target", type=int, default=0)
     p.set_defaults(func=cmd_status)
+
+    p = sub.add_parser("check", help="只读检查项目状态、记录和文件大小，有错误时返回 1")
+    p.add_argument("project")
+    p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("brief", help="按细纲和上一章结尾抽出这一章要读的资料，存进 待确认/")
+    p.add_argument("project")
+    p.add_argument("chapter", type=int)
+    p.add_argument("--out", help="写到别的路径")
+    p.add_argument("--stdout", action="store_true", help="只打印，不写文件")
+    p.set_defaults(func=cmd_brief)
     return parser
 
 
