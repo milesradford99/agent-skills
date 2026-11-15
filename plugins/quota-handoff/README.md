@@ -31,13 +31,9 @@ Claude then finishes the edit it is in the middle of, writes `HANDOFF.md` (goal,
 
    Or inside Claude Code: `/plugin marketplace add milesradford99/agent-skills`, then `/plugin install quota-handoff@milesradford-skills`.
 
-2. Start a new Claude Code session (or run `/reload-plugins`), then run this once:
+2. Start a new Claude Code session. The plugin sets itself up when the session starts: it points `statusLine` in `~/.claude/settings.json` at its script, keeps the status line you had drawing the bar, leaves a backup at `~/.claude/settings.json.quota-handoff.bak`, and says so in one line. It does this once.
 
-   ```text
-   /quota-handoff:setup
-   ```
-
-   It points `statusLine` in `~/.claude/settings.json` at the plugin's script and leaves a backup at `~/.claude/settings.json.quota-handoff.bak`. Until you do this, each new session shows a one-line reminder.
+   To do this step yourself instead, turn the `auto_setup` option off and run `/quota-handoff:setup`.
 
 3. Send any message, wait for the reply, then check:
 
@@ -57,6 +53,7 @@ Change them with `/plugin configure quota-handoff@milesradford-skills` or in `/c
 | `week_remaining` | `10` | The same for the weekly quota. |
 | `handoff_file` | `HANDOFF.md` | Where the handoff document goes, relative to the project root. |
 | `push` | `true` | Push after committing. `false` commits locally only. |
+| `auto_setup` | `true` | Wire the status line at the first session start. `false` leaves it to `/quota-handoff:setup`. |
 
 The handoff itself uses quota: Claude has to write the document and run git with the whole conversation in context. With a long conversation on a small plan, 10% of the 5-hour window can be tight, so raise `five_hour_remaining` to 15 or 20 if a handoff was ever cut off.
 
@@ -71,7 +68,7 @@ The handoff itself uses quota: Claude has to write the document and run git with
 
 ## Uninstall
 
-Run `/quota-handoff:setup uninstall` first, so your earlier status line is put back, then:
+Run `/quota-handoff:setup uninstall` first, so your earlier status line is put back. After that the plugin doesn't set itself up again unless you run `/quota-handoff:setup`. Then:
 
 ```bash
 claude plugin uninstall quota-handoff@milesradford-skills
@@ -100,4 +97,4 @@ Checked against the Claude Code docs and v2.1.325:
 - The status line input carries `rate_limits.five_hour` and `rate_limits.seven_day`, each with `used_percentage` and `resets_at`, for Pro, Max and Ultra subscribers after the first API response. Hook input has no quota field.
 - The status line command re-runs after each assistant message.
 - `PostToolUse` and `UserPromptSubmit` hooks can add to Claude's context with `hookSpecificOutput.additionalContext`.
-- A plugin can't set the user's status line itself, which is why setup is a separate step.
+- A plugin manifest can't declare a status line, which is why a `SessionStart` hook edits `statusLine` in the user's settings.

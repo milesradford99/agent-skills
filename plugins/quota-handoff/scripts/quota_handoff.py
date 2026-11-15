@@ -8,7 +8,8 @@ Standard library only. One file, six subcommands:
     check        Hook command (PostToolUse, UserPromptSubmit). Fires once per session
                  when the 5-hour or weekly quota left is below its threshold.
     sync         Hook command (SessionStart). Keeps the stable copy of this script
-                 current and says so when the status line isn't wired up.
+                 current and wires the status line the first time, unless the
+                 auto_setup option is off or the user ran uninstall.
     install      Point the user's status line at this script, keeping the old one.
     uninstall    Put the old status line back.
     status       Show the wiring, the thresholds and the last saved rate limits.
@@ -314,32 +315,57 @@ def prune_markers(now: float) -> None:
             pass
 
 
+def option_on(name: str, default: bool = True) -> bool:
+    raw = os.environ.get(f"CLAUDE_PLUGIN_OPTION_{name}", "").strip().lower()
+    if not raw:
+        return default
+    return raw not in ("false", "0", "no", "off")
+
+
 def cmd_sync() -> int:
     try:
         sync_script()
         prune_markers(time.time())
     except OSError:
         return 0
-    if not is_ours(read_json(settings_path()).get("statusLine")):
-        note = "quota-handoff is installed but not active: run /quota-handoff:setup once so it can read your quota."
-        print(json.dumps({"systemMessage": note}))
+    if is_ours(read_json(settings_path()).get("statusLine")):
+        return 0
+    if read_json(saved_path()).get("auto_setup_disabled"):
+        return 0  # the user ran uninstall; don't wire it back or nag
+    manual = "run /quota-handoff:setup so it can read your quota."
+    if not option_on("AUTO_SETUP"):
+        note = f"quota-handoff is installed but not active: {manual}"
+    else:
+        settings = load_settings(quiet=True)
+        if settings is None:
+            note = f"quota-handoff couldn't read {settings_path()}, so it is not active. Fix the file, then {manual}"
+        else:
+            previous = wire_statusline(settings)
+            kept = " Your earlier status line still draws the bar." if previous else ""
+            note = (
+                f"quota-handoff set itself up: the status line in {settings_path()} now also saves your quota."
+                f"{kept} Backup: {settings_path().name}.quota-handoff.bak. Undo: /quota-handoff:setup uninstall."
+            )
+    print(json.dumps({"systemMessage": note}))
     return 0
 
 
 # ---------------------------------------------------------------- install / uninstall / status
 
 
-def load_settings() -> dict | None:
+def load_settings(quiet: bool = False) -> dict | None:
     path = settings_path()
     if not path.exists():
         return {}
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as err:
-        print(f"Can't read {path}: {err}. Fix the file and run this again; nothing was changed.")
+        if not quiet:
+            print(f"Can't read {path}: {err}. Fix the file and run this again; nothing was changed.")
         return None
     if not isinstance(data, dict):
-        print(f"{path} isn't a JSON object; nothing was changed.")
+        if not quiet:
+            print(f"{path} isn't a JSON object; nothing was changed.")
         return None
     return data
 
@@ -348,6 +374,29 @@ def backup_settings() -> None:
     path = settings_path()
     if path.exists():
         shutil.copyfile(path, path.with_name(path.name + ".quota-handoff.bak"))
+
+
+def wire_statusline(settings: dict) -> str | None:
+    """Point statusLine at this script. Returns the earlier status line command, if any."""
+    current = settings.get("statusLine")
+    saved = read_json(saved_path())
+    if not is_ours(current):
+        # Remember what was there, including "nothing", so uninstall can put it back.
+        saved["previous_statusline"] = current if isinstance(current, dict) else None
+    saved.pop("auto_setup_disabled", None)
+    write_json(saved_path(), saved)
+
+    new = dict(current) if isinstance(current, dict) else {}
+    new["type"] = "command"
+    new["command"] = our_command()
+    backup_settings()
+    settings["statusLine"] = new
+    write_json(settings_path(), settings)
+
+    previous = saved.get("previous_statusline")
+    if isinstance(previous, dict) and previous.get("command"):
+        return str(previous["command"])
+    return None
 
 
 def cmd_install() -> int:
@@ -360,23 +409,10 @@ def cmd_install() -> int:
         print("Already set up: the status line runs quota-handoff.")
         return 0
 
-    saved = read_json(saved_path())
-    if not is_ours(current):
-        # Remember what was there, including "nothing", so uninstall can put it back.
-        saved["previous_statusline"] = current if isinstance(current, dict) else None
-        write_json(saved_path(), saved)
-
-    new = dict(current) if isinstance(current, dict) else {}
-    new["type"] = "command"
-    new["command"] = our_command()
-    backup_settings()
-    settings["statusLine"] = new
-    write_json(settings_path(), settings)
-
-    print(f"Status line now runs: {new['command']}")
-    previous = saved.get("previous_statusline")
-    if isinstance(previous, dict) and previous.get("command"):
-        print(f"Your earlier status line still draws the bar: {previous['command']}")
+    previous = wire_statusline(settings)
+    print(f"Status line now runs: {our_command()}")
+    if previous:
+        print(f"Your earlier status line still draws the bar: {previous}")
     else:
         print("You had no status line, so a short quota line is shown.")
     print(f"Backup of your settings: {settings_path()}.quota-handoff.bak")
@@ -388,10 +424,13 @@ def cmd_uninstall() -> int:
     settings = load_settings()
     if settings is None:
         return 1
+    saved = read_json(saved_path())
+    saved["auto_setup_disabled"] = True  # so the next session doesn't wire it back
+    write_json(saved_path(), saved)
     if not is_ours(settings.get("statusLine")):
-        print("The status line doesn't run quota-handoff; nothing to undo.")
+        print("The status line doesn't run quota-handoff; nothing to undo. It won't set itself up again.")
         return 0
-    previous = read_json(saved_path()).get("previous_statusline")
+    previous = saved.get("previous_statusline")
     backup_settings()
     if isinstance(previous, dict) and previous.get("command"):
         settings["statusLine"] = previous
@@ -400,6 +439,7 @@ def cmd_uninstall() -> int:
         settings.pop("statusLine", None)
         print("Status line removed (you had none before).")
     write_json(settings_path(), settings)
+    print("quota-handoff won't set itself up again; run /quota-handoff:setup to turn it back on.")
     print(f"Saved data is still in {state_dir()}; delete that folder to remove it.")
     return 0
 
@@ -407,6 +447,9 @@ def cmd_uninstall() -> int:
 def cmd_status() -> int:
     wired = is_ours(read_json(settings_path()).get("statusLine"))
     print(f"Status line wired: {'yes' if wired else 'no (run /quota-handoff:setup)'}")
+    if not wired:
+        off = read_json(saved_path()).get("auto_setup_disabled") or not option_on("AUTO_SETUP")
+        print(f"Automatic setup at session start: {'off' if off else 'on'}")
     for _key, label, option in WINDOWS:
         print(f"Threshold, {label}: fire below {threshold(option):.0f}% left")
     cache = read_json(cache_path())

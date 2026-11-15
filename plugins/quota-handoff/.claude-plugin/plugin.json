@@ -1,6 +1,6 @@
 {
   "name": "quota-handoff",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Tells Claude Code to stop, write a handoff document, commit and push once per session when the 5-hour or weekly subscription quota left drops below 10%, so work isn't cut off halfway.",
   "author": {
     "name": "MilesRadford",
@@ -36,6 +36,12 @@
       "type": "boolean",
       "title": "Push after committing",
       "description": "Push the handoff commit to the branch's remote. Turn off to commit locally only.",
+      "default": true
+    },
+    "auto_setup": {
+      "type": "boolean",
+      "title": "Set up automatically",
+      "description": "Wire the status line at the first session start, keeping the one you had. Turn off to do it yourself with /quota-handoff:setup.",
       "default": true
     }
   }

@@ -169,12 +169,46 @@ class QuotaHandoffTest(unittest.TestCase):
         self.assertEqual(done.returncode, 1)
         self.assertEqual(self.settings.read_text(), "{ not json")
 
-    def test_sync_copies_the_script_and_reminds_until_set_up(self):
+    def test_sync_sets_itself_up_once_and_keeps_the_old_statusline(self):
+        before = {"model": "x", "statusLine": {"type": "command", "command": "echo OLD-BAR"}}
+        self.settings.write_text(json.dumps(before))
         out = json.loads(self.run_cmd("sync").stdout)
-        self.assertIn("/quota-handoff:setup", out["systemMessage"])
+        self.assertIn("set itself up", out["systemMessage"])
+        self.assertIn("earlier status line", out["systemMessage"])
         self.assertEqual((self.state / "quota_handoff.py").read_bytes(), SCRIPT.read_bytes())
-        self.run_cmd("install")
+        after = json.loads(self.settings.read_text())
+        self.assertIn("quota_handoff.py", after["statusLine"]["command"])
+        self.assertEqual(json.loads(Path(str(self.settings) + ".quota-handoff.bak").read_text()), before)
+        self.assertEqual(self.run_cmd("sync").stdout, "")  # silent once wired
+        self.run_cmd("uninstall")
+        self.assertEqual(json.loads(self.settings.read_text()), before)
+
+    def test_sync_without_settings_creates_the_statusline(self):
+        out = json.loads(self.run_cmd("sync").stdout)
+        self.assertNotIn("earlier status line", out["systemMessage"])
+        self.assertIn("quota_handoff.py", json.loads(self.settings.read_text())["statusLine"]["command"])
+
+    def test_sync_stays_out_after_uninstall_until_install(self):
+        self.run_cmd("sync")
+        self.run_cmd("uninstall")
         self.assertEqual(self.run_cmd("sync").stdout, "")
+        self.assertNotIn("statusLine", json.loads(self.settings.read_text()))
+        self.assertIn("setup at session start: off", self.run_cmd("status").stdout)
+        self.run_cmd("install")
+        self.run_cmd("uninstall")
+        self.run_cmd("install")
+        self.assertIn("quota_handoff.py", json.loads(self.settings.read_text())["statusLine"]["command"])
+
+    def test_sync_only_reminds_when_auto_setup_is_off(self):
+        out = json.loads(self.run_cmd("sync", CLAUDE_PLUGIN_OPTION_AUTO_SETUP="false").stdout)
+        self.assertIn("/quota-handoff:setup", out["systemMessage"])
+        self.assertFalse(self.settings.exists())
+
+    def test_sync_leaves_a_broken_settings_file_alone(self):
+        self.settings.write_text("{ not json")
+        out = json.loads(self.run_cmd("sync").stdout)
+        self.assertIn("couldn't read", out["systemMessage"])
+        self.assertEqual(self.settings.read_text(), "{ not json")
 
     def test_sync_prunes_old_markers(self):
         self.feed(five=99)
