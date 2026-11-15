@@ -14,6 +14,14 @@ Skills for building open-source software, making videos, writing Douyin finance 
 
 | [`webnovel-workflow`](skills/webnovel-workflow/SKILL.md) | Takes an author from an idea to a finished long-form Chinese web novel, one chapter at a time. A project archive on disk holds the book's state; each new conversation starts with a read-only check and a per-chapter context pack pulled from the archive by name, plus a handover note of what the author said last time. It stops only for decisions about direction and brings at most three of them at a time with a recommended default. A reader with no access to the outline checks each chapter, a small tool does the filing and word counts, and the author's own edits are diffed to learn their taste. Adapted from [阿序AI 长篇小说工作流 4.0](https://github.com/asass-11/axu-novel); CC BY-NC 4.0, not MIT. | Starting a novel from nothing, writing the next chapter, planning the next batch of chapter outlines, closing a volume, or fixing a passage that reads wrong |
 
+## Plugins
+
+Not everything here is a skill. A plugin can also carry hooks, which run on their own instead of waiting for the agent to pick them up.
+
+| Plugin | What it does | Use it when |
+|---|---|---|
+| [`quota-handoff`](plugins/quota-handoff/README.md) | Watches your Claude subscription quota through the status line. Once per session, when the 5-hour or weekly quota left drops below 10%, it tells Claude to stop, write a handoff document, commit the work in progress and push it. Thresholds, the file name and pushing are options. Claude Code only; needs a one-time `/quota-handoff:setup`. | You run long Claude Code sessions on a Pro, Max or Ultra plan and don't want work cut off halfway |
+
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
 ## What makes these different
@@ -37,9 +45,10 @@ Skills for building open-source software, making videos, writing Douyin finance 
 /plugin install douyin-finance-koubo@milesradford-skills
 /plugin install miao-yanliang-macro-lens@milesradford-skills
 /plugin install webnovel-workflow@milesradford-skills
+/plugin install quota-handoff@milesradford-skills
 ```
 
-Each skill installs as its own plugin, so you can take one without the other.
+Each skill installs as its own plugin, so you can take one without the other. `quota-handoff` needs one more step after installing: run `/quota-handoff:setup` in a new session. Its [README](plugins/quota-handoff/README.md) has the full guide.
 
 ### Any agent that reads `SKILL.md` folders
 
