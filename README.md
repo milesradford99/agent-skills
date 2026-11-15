@@ -20,7 +20,7 @@ Not everything here is a skill. A plugin can also carry hooks, which run on thei
 
 | Plugin | What it does | Use it when |
 |---|---|---|
-| [`quota-handoff`](plugins/quota-handoff/README.md) | Watches your Claude subscription quota through the status line. Once per session, when the 5-hour or weekly quota left drops below 10%, it tells Claude to stop, write a handoff document, commit the work in progress and push it. Thresholds, the file name and pushing are options. Claude Code only; needs a one-time `/quota-handoff:setup`. | You run long Claude Code sessions on a Pro, Max or Ultra plan and don't want work cut off halfway |
+| [`quota-handoff`](plugins/quota-handoff/README.md) | Watches your Claude subscription quota through the status line. Once per session, when the 5-hour or weekly quota left drops below 10%, it tells Claude to stop, write a handoff document, commit the work in progress and push it. Thresholds, the file name and pushing are options. Claude Code only; it sets up its status line hookup at the first session start. | You run long Claude Code sessions on a Pro, Max or Ultra plan and don't want work cut off halfway |
 
 **Status:** v0.1, early. Maintained as a personal project, best effort, no support guarantee.
 
@@ -48,7 +48,7 @@ Not everything here is a skill. A plugin can also carry hooks, which run on thei
 /plugin install quota-handoff@milesradford-skills
 ```
 
-Each skill installs as its own plugin, so you can take one without the other. `quota-handoff` needs one more step after installing: run `/quota-handoff:setup` in a new session. Its [README](plugins/quota-handoff/README.md) has the full guide.
+Each skill installs as its own plugin, so you can take one without the other. `quota-handoff` sets itself up the first time a session starts after installing, by pointing your status line at its script (the one you had keeps drawing the bar). Its [README](plugins/quota-handoff/README.md) has the full guide.
 
 ### Any agent that reads `SKILL.md` folders
 
