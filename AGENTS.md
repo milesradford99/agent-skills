@@ -8,3 +8,4 @@
 - Bump `version` in the plugin entry and add a `CHANGELOG.md` line for any change to a skill's behavior.
 - Dated product facts live in each skill's "Facts as of" section. When you re-verify one, update its date.
 - Never commit secrets, `.env*` files or `*.local.*` files.
+- Plugins that carry hooks or scripts live in `plugins/<name>/` with their own `.claude-plugin/plugin.json` and README, and a marketplace entry whose `source` is that folder. Never put `hooks/` at the repo root: every skill plugin uses the root as its source and would load them. Keep the `version` in `plugin.json` and in the marketplace entry the same, and run `claude plugin validate ./plugins/<name>`.

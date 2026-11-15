@@ -1,0 +1,42 @@
+{
+  "name": "quota-handoff",
+  "version": "0.1.0",
+  "description": "Tells Claude Code to stop, write a handoff document, commit and push once per session when the 5-hour or weekly subscription quota left drops below 10%, so work isn't cut off halfway.",
+  "author": {
+    "name": "MilesRadford",
+    "url": "https://github.com/milesradford99"
+  },
+  "repository": "https://github.com/milesradford99/agent-skills",
+  "license": "MIT",
+  "keywords": ["quota", "rate-limit", "handoff", "hooks", "statusline"],
+  "userConfig": {
+    "five_hour_remaining": {
+      "type": "number",
+      "title": "5-hour threshold (% left)",
+      "description": "Hand off when the 5-hour quota left is below this percentage. 0 turns this window off.",
+      "default": 10,
+      "min": 0,
+      "max": 100
+    },
+    "week_remaining": {
+      "type": "number",
+      "title": "Weekly threshold (% left)",
+      "description": "Hand off when the weekly quota left is below this percentage. 0 turns this window off.",
+      "default": 10,
+      "min": 0,
+      "max": 100
+    },
+    "handoff_file": {
+      "type": "string",
+      "title": "Handoff document",
+      "description": "Path of the handoff document, relative to the project root.",
+      "default": "HANDOFF.md"
+    },
+    "push": {
+      "type": "boolean",
+      "title": "Push after committing",
+      "description": "Push the handoff commit to the branch's remote. Turn off to commit locally only.",
+      "default": true
+    }
+  }
+}

@@ -93,6 +93,15 @@
       "category": "writing",
       "tags": ["novel", "webnovel", "fiction", "writing", "chinese"],
       "skills": ["./skills/webnovel-workflow"]
+    },
+    {
+      "name": "quota-handoff",
+      "source": "./plugins/quota-handoff",
+      "description": "Tells Claude Code to stop, write a handoff document, commit and push once per session when the 5-hour or weekly subscription quota left drops below 10%, so work isn't cut off halfway. Needs a one-time /quota-handoff:setup.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["quota", "rate-limit", "handoff", "hooks", "statusline"]
     }
   ]
 }
