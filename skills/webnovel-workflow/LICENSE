@@ -1,6 +1,6 @@
 webnovel-workflow（长篇网文工作流）
 
-改编自《阿序AI 长篇小说工作流 4.0》（axu-novel）
+改编自《阿序AI 长篇小说工作流》（axu-novel），最初据 4.0 改编，已同步 5.0 的改动
 原作 Copyright (c) 2026 阿序AI
 原作地址：https://github.com/asass-11/axu-novel
 修改部分 Copyright (c) 2026 MilesRadford
@@ -27,9 +27,12 @@ webnovel-workflow（长篇网文工作流）
   和其他参考文件、模板有增删。
 - 新增 references/人物与命运.md；新增 references/题材-力量体系.md（内容摘自原作开书各步）、
   references/tools/novel.py、references/tools/context.py、evals/。
+- 5.0 的改动（开书和分卷纲请读者说哪里想跳过、“主角会算错”的修正、现实题材和史实核对、
+  档案只记现在的样子、写过的细纲挪出大纲、建议换对话、段落连读冷读）按本改编版的结构并入；
+  写过的细纲改由 references/tools/novel.py 的 done 挪动。
 - references/去AI味.md 的错例、references/排细纲.md 的九个问题和
   references/参照样章-师姐第一章.md 基本保持原样。
 
-This work is adapted from "阿序AI 长篇小说工作流 4.0" by 阿序AI and is licensed under
+This work is adapted from "阿序AI 长篇小说工作流" (4.0, updated to 5.0) by 阿序AI and is licensed under
 the Creative Commons Attribution-NonCommercial 4.0 International License.
 https://creativecommons.org/licenses/by-nc/4.0/

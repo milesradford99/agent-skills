@@ -8,10 +8,12 @@
     novel.py status <project> [--target N]         adopted chapters, sizes, pending drafts
     novel.py check  <project>                      read-only check of status, records and sizes
     novel.py brief  <project> <chapter>            write the chapter's context pack to 待确认/
-    novel.py done   <project>                      close the write-back once check is clean
+    novel.py done   <project>                      close the write-back once check is clean,
+                                                   move the chapter's outline to 记录-归档/
 
 Nothing here deletes a file or edits the story records (02–04, 记录-*.md): those stay
-with the agent and the author. `adopt` and `done` own the progress fields of
+with the agent and the author. The one exception is mechanical: `done` moves the adopted
+chapter's outline, word for word, from 04's 当前细纲 to 记录-归档/<卷>-细纲.md. `adopt` and `done` own the progress fields of
 01-项目状态.md (已采用到, the candidate pointers, 最近一次回写, 下一步) so they can't
 drift from the files. `check`, `brief` and the status helpers live in context.py.
 """
@@ -235,6 +237,29 @@ def adopt_chapter(project: Path, number: int, source: Path, replace: bool = Fals
             "registered": register}
 
 
+def archive_outline(project: Path, number: int, volume: str) -> Path | None:
+    """Move chapter `number`'s outline from 04's 当前细纲 to 记录-归档/<卷>-细纲.md, word for word.
+
+    04 is read before every chapter; written outlines left in it make it grow without end.
+    """
+    outline_path = project / context.OUTLINE
+    if not outline_path.is_file():
+        return None
+    taken = context.take_chapter_outline(outline_path.read_text(encoding="utf-8-sig"), number)
+    if taken is None:
+        return None
+    left, cut = taken
+    volume = re.sub(r"[（(].*$", "", volume).strip()
+    if not re.fullmatch(r"第\S{1,6}卷", volume):
+        volume = "未分卷"
+    archive = project / context.ARCHIVE_DIR / f"{volume}-细纲.md"
+    archive.parent.mkdir(parents=True, exist_ok=True)
+    existing = archive.read_text(encoding="utf-8") if archive.is_file() else f"# {volume} 写过的细纲\n\n每章采用、回写完成时由 novel.py done 从 {context.OUTLINE} 挪来，一字不改。\n"
+    archive.write_text(existing.rstrip("\n") + "\n\n" + "\n".join(cut) + "\n", encoding="utf-8")
+    outline_path.write_text(left, encoding="utf-8")
+    return archive
+
+
 def finish_writeback(project: Path) -> dict[str, object]:
     """Close the write-back in progress if `check` is clean. Returns errors instead of raising."""
     status_path = project / context.STATUS
@@ -264,10 +289,11 @@ def finish_writeback(project: Path) -> dict[str, object]:
     ):
         updated = context.set_field(updated, section, key, value)
     status_path.write_text(updated, encoding="utf-8")
+    archived = archive_outline(project, number, fields.get("当前卷", ""))
     if 0 < len(remaining) < 3 and stage == "写正文":
         warnings.append(f"细纲只剩 {len(remaining)} 章：提醒作者排下一批")
     return {"closed": True, "chapter": number, "errors": [], "warnings": warnings,
-            "changed": changed, "unchanged": unchanged, "next": step}
+            "changed": changed, "unchanged": unchanged, "next": step, "archived": archived}
 
 
 def project_status(project: Path) -> dict[str, object]:
@@ -323,6 +349,8 @@ def cmd_done(args: argparse.Namespace) -> int:
         print(f"第{result['chapter']}章的回写还没完成，上面的错误改完再跑一次。")
         return 1
     print(f"第{result['chapter']}章回写完成。改过的：{'、'.join(result['changed']) or '无'}；没动的：{'、'.join(result['unchanged']) or '无'}")
+    if result["archived"]:
+        print(f"第{result['chapter']}章的细纲挪进了 {result['archived'].relative_to(Path(args.project))}")
     print(f"下一步：{result['next']}")
     return 0
 
@@ -446,7 +474,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--target", type=int, default=0)
     p.set_defaults(func=cmd_status)
 
-    p = sub.add_parser("done", help="check 干净后把回写标成完成，并写好下一步")
+    p = sub.add_parser("done", help="check 干净后把回写标成完成、写好下一步，把这一章的细纲挪进 记录-归档/")
     p.add_argument("project")
     p.set_defaults(func=cmd_done)
 

@@ -31,6 +31,7 @@ RESOURCES = "记录-资源.md"
 BODY_DIR = "正文"
 PENDING_DIR = "待确认"
 DONE_DIR = "已处理"
+ARCHIVE_DIR = "记录-归档"
 CORE_FILES = (STATUS, RULES, SETTINGS, CHARACTERS, OUTLINE, CURRENT, FORESHADOW, TIMELINE, DROPPED)
 SNAPSHOT_FILES = (STATUS, SETTINGS, CHARACTERS, OUTLINE, CURRENT, FORESHADOW, TIMELINE, DROPPED, RESOURCES)
 RECORDS_TO_UPDATE = (CURRENT, FORESHADOW, TIMELINE, CHARACTERS, SETTINGS, OUTLINE)
@@ -65,6 +66,8 @@ CHAPTER_HEADING_RE = re.compile(r"^第0*(\d+)章")
 CHAPTER_FILE_RE = re.compile(r"^第0*(\d+)章")
 FORESHADOW_ID_RE = re.compile(r"\bF\d{3,}\b")
 NUMBER_RE = re.compile(r"\d+")
+# A per-chapter update log appended under the records, e.g. "## 第12章更新", "### 第12章后".
+UPDATE_LOG_RE = re.compile(r"^第0*\d+章.{0,4}(更新|变化|后)")
 SPLIT_RE = re.compile(r"[、，,；;/\s]+")
 FIELD_LINE_RE = re.compile(r"^\s*[-*]\s+\S")
 
@@ -212,6 +215,32 @@ def chapter_outline(outline_text: str, number: int) -> tuple[str, list[str]] | N
         return bool(match and int(match.group(1)) == number)
 
     return section(outline_text, is_this_chapter)
+
+
+def take_chapter_outline(outline_text: str, number: int) -> tuple[str, list[str]] | None:
+    """Cut chapter `number`'s outline out of the 当前细纲 section. Returns (text left, cut lines)."""
+    lines = outline_text.splitlines()
+    marks = headings(outline_text)
+    start_section = next(((pos, index, level) for pos, (index, level, title) in enumerate(marks)
+                          if title == "当前细纲"), None)
+    if start_section is None:
+        return None
+    pos, _, section_level = start_section
+    section_end = next((index for index, level, _ in marks[pos + 1:] if level <= section_level), len(lines))
+    for later, (index, level, title) in enumerate(marks[pos + 1:], start=pos + 1):
+        if index >= section_end:
+            break
+        match = CHAPTER_HEADING_RE.match(title)
+        if not match or int(match.group(1)) != number:
+            continue
+        end = next((i for i, lvl, _ in marks[later + 1:] if lvl <= level), len(lines))
+        end = min(end, section_end)
+        cut = lines[index:end]
+        while cut and not cut[-1].strip():
+            cut.pop()
+        left = lines[:index] + lines[end:]
+        return "\n".join(left).rstrip("\n") + "\n", cut
+    return None
 
 
 def current_outlines(outline_text: str) -> list[tuple[int, str, list[str]]]:
@@ -709,9 +738,15 @@ def check_project(project: Path, finishing: bool = False) -> tuple[list[str], li
     if no_alias:
         errors.append(f"{SETTINGS} 的重要地点和物品里缺“别名”一行：{'、'.join(no_alias)}")
 
+    for name in (CURRENT, RESOURCES):
+        logs = [title for _, _, title in headings(read(project, name) or "") if UPDATE_LOG_RE.match(title)]
+        if logs:
+            warnings.append(f"{name} 里有按章追加的小节：{'、'.join(logs[:3])}{'等' if len(logs) > 3 else ''}。"
+                            "这份只记现在的样子：把变化改进对应的人、对应的那一项，经过留在时间线和正文里")
+
     current_text = read(project, CURRENT)
     if current_text is not None:
-        current = parse_entries(current_text, CURRENT)
+        current = [entry for entry in parse_entries(current_text, CURRENT) if not UPDATE_LOG_RE.match(entry.title)]
         no_state = [entry.title for entry in current if not entry.field("状态")]
         if no_state:
             errors.append(f"{CURRENT} 里缺“状态”一行：{'、'.join(no_state)}")

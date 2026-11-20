@@ -340,6 +340,28 @@ class CheckTest(unittest.TestCase):
         current.write_text(current.read_text(encoding="utf-8") + "\n## 执事\n- 状态：在场\n- 最近更新：第4章\n", encoding="utf-8")
         self.assertTrue(novel.finish_writeback(self.project)["closed"])
 
+    def test_done_moves_the_written_outline_out_of_the_outline_file(self):
+        sample_book(self.project)
+        write(self.project, "04-大纲.md", "# 大纲\n\n## 分卷纲\n### 第一卷：药园\n- 方向\n\n## 当前细纲\n"
+              "### 第4章：巡夜\n- 出场：林晚\n- 伏笔：F001\n- 林晚巡夜。\n\n"
+              "### 第5章：对质\n- 出场：林晚\n- 伏笔：无\n- 林晚对质。\n")
+        novel.adopt_chapter(self.project, 4, write(self.project, "待确认/第004章-v2-候选.md", "林晚提灯。"))
+        timeline = self.project / "记录-时间线.md"
+        timeline.write_text(timeline.read_text(encoding="utf-8").replace("- 第004章：待填写", "- 第004章：巡夜"), encoding="utf-8")
+        status = self.project / "01-项目状态.md"
+        status.write_text(context.set_field(status.read_text(encoding="utf-8"), "交接", "更新于", "第4章后"), encoding="utf-8")
+        result = novel.finish_writeback(self.project)
+        self.assertTrue(result["closed"], result["errors"])
+        self.assertEqual(result["next"], "写第5章")
+        outline = (self.project / "04-大纲.md").read_text(encoding="utf-8")
+        self.assertNotIn("林晚巡夜", outline)
+        self.assertIn("### 第5章：对质", outline)
+        self.assertIn("### 第一卷：药园", outline)
+        archive = self.project / "记录-归档" / "第一卷-细纲.md"
+        self.assertEqual(result["archived"], archive)
+        self.assertIn("### 第4章：巡夜\n- 出场：林晚\n- 伏笔：F001\n- 林晚巡夜。\n", archive.read_text(encoding="utf-8"))
+        self.assertEqual(context.check_project(self.project)[0], [])
+
     def test_adopt_registers_a_chapter_the_author_put_in_body(self):
         sample_book(self.project)
         write(self.project, "04-大纲.md", "# 大纲\n\n## 当前细纲\n")
@@ -399,6 +421,14 @@ class CheckTest(unittest.TestCase):
         joined = "\n".join(errors)
         for expected in ("缺“别名”", "缺“状态”", "缺“出场”或“伏笔”", "没有“交接”"):
             self.assertIn(expected, joined)
+
+    def test_per_chapter_update_logs_in_records_are_flagged(self):
+        sample_book(self.project)
+        current = self.project / "记录-人物现状.md"
+        current.write_text(current.read_text(encoding="utf-8") + "\n## 第3章更新\n- 林晚受伤\n", encoding="utf-8")
+        errors, warnings = context.check_project(self.project)
+        self.assertFalse(any("第3章更新" in line for line in errors))
+        self.assertTrue(any("按章追加" in line and "第3章更新" in line for line in warnings))
 
     def test_size_caps_and_duplicate_ids(self):
         sample_book(self.project)
