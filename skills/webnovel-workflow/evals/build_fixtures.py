@@ -241,7 +241,7 @@ def base_book(project):
     write(project, "记录-废弃设定.md", DROPPED)
     write(project, "记录-资源.md", RESOURCES)
     write(project, "记录-时间线.md", "# 时间线\n\n按章记，每章一两句，只记会影响后面的事。故事里过了多少天、多少年，也记在这里。\n\n")
-    write(project, "04-大纲.md", "# 大纲\n\n## 故事框架\n- 外门弟子林晚为救弟弟查丹方缺页，牵出顾长风的灭门旧案。\n\n### 作者确认的卖点\n- 嘴硬心软的药园师姐，一边种药一边破案\n\n## 分卷纲\n### 第一卷：药园\n- 林晚查丹方缺页，和顾长风从互不说话到联手。\n\n## 当前细纲\n\n## 已写\n")
+    write(project, "04-大纲.md", "# 大纲\n\n## 故事框架\n- 外门弟子林晚为救弟弟查丹方缺页，牵出顾长风的灭门旧案。\n\n### 作者确认的卖点\n- 嘴硬心软的药园师姐，一边种药一边破案\n\n## 分卷纲\n### 第一卷：药园\n- 林晚查丹方缺页，和顾长风从互不说话到联手。\n\n## 当前细纲\n")
     rules = (project / "00-写作规则.md").read_text(encoding="utf-8")
     write(project, "00-写作规则.md", rules)
     for section, key, value in (
@@ -493,7 +493,7 @@ def fixture_fate(out):
     novel.init_project(project)
     write(project, "03-人物.md", FATE_CHARACTERS)
     write(project, "02-设定.md", SETTINGS)
-    write(project, "04-大纲.md", "# 大纲\n\n## 故事框架\n- 待填写（开书 4.2 写）\n\n### 作者确认的卖点\n- 嘴硬心软的药园师姐，一边种药一边破案\n\n## 分卷纲\n### 第一卷：药园\n- 待填写\n\n## 当前细纲\n\n## 已写\n")
+    write(project, "04-大纲.md", "# 大纲\n\n## 故事框架\n- 待填写（开书 4.2 写）\n\n### 作者确认的卖点\n- 嘴硬心软的药园师姐，一边种药一边破案\n\n## 分卷纲\n### 第一卷：药园\n- 待填写\n\n## 当前细纲\n")
     record = project / "05-开书记录.md"
     text = record.read_text(encoding="utf-8")
     text = text.replace("## 作者想写什么\n访谈后总结的六样：主角是什么样的人、最想看的两三种场面、希望读者读完的感受、一定不写的、平台和篇幅、作者熟悉的生活或行业。你替作者补的要标明。另记一句“读者一路盼的那条线”。\n- 待填写",
