@@ -95,6 +95,17 @@
       "skills": ["./skills/webnovel-workflow"]
     },
     {
+      "name": "more-ambitious",
+      "source": "./",
+      "strict": false,
+      "description": "Pushes a task past the average first attempt: an ambition ladder (altitude, depth, range), at most 3 questions only you can answer, the access that unlocks more, hard targets and outside validation instead of self-grading.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "category": "productivity",
+      "tags": ["ambition", "prompting", "agents", "workflow", "validation"],
+      "skills": ["./skills/more-ambitious"]
+    },
+    {
       "name": "quota-handoff",
       "source": "./plugins/quota-handoff",
       "description": "Tells Claude Code to stop, write a handoff document, commit and push once per session when the 5-hour or weekly subscription quota left drops below 10%, so work isn't cut off halfway. Sets itself up at the first session start.",

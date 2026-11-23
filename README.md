@@ -1,6 +1,6 @@
 # agent-skills
 
-Skills for building open-source software, making videos, writing Douyin finance scripts, and reading China's A-share rescue cycle with an AI coding agent. They stay useful as models get stronger because they encode judgment, safety lines and proportion, not tips the model already knows.
+Skills for building open-source software, making videos, writing Douyin finance scripts, reading China's A-share rescue cycle, and pushing an agent past its average first attempt with an AI coding agent. They stay useful as models get stronger because they encode judgment, safety lines and proportion, not tips the model already knows.
 
 | Skill | What it does | Use it when |
 |---|---|---|
@@ -11,8 +11,8 @@ Skills for building open-source software, making videos, writing Douyin finance 
 | [`narrative-dcf-valuation`](skills/narrative-dcf-valuation/SKILL.md) | Values any listed stock with the closed-form DCF from the book 穿透叙事 (Zou Peixuan, 2026). It reverses the price into the implied earnings ceiling, replays the book's case-study routine (implied-ceiling timeline, revision path, leading variable, margin and event checks), and ends with a fair value, a fair ceiling and the contradictions the market hasn't priced. Its calculator reproduces the book's tables exactly. Analysis only: it gives no trade advice. | Asking what a stock's price implies, what a fair PE or value is, or anything about 业绩天花板, 隐含预期 or 叙事估值 |
 | [`douyin-finance-koubo`](skills/douyin-finance-koubo/SKILL.md) | Writes Douyin (抖音) finance and business 口播 scripts in Mandarin. It checks what everyone already says on the topic, requires at least two pieces of material others lack, pushes the insight past the first layer and hands the viewer a reusable judgment tool. It designs retention as a chain of questions, drafts in spoken Chinese with the structural tells of generated text ruled out, and runs cold reads for drop-off, takeaway, follow and voice before delivery. It never invents people or experiences and gives no trade advice. | Writing, rewriting or auditing a finance, macro, policy or business-commentary script for Douyin |
 | [`miao-yanliang-macro-lens`](skills/miao-yanliang-macro-lens/SKILL.md) | Analyzes monetary policy, the dollar, gold, the renminbi, China's low inflation and AI-and-inflation questions with a framework drawn from Miao Yanliang's public books, reports and interviews (unofficial, not him). It works through reality, mechanism, judgment, gives every call a horizon, conditions and a failure signal, keeps dated opinion snapshots apart from the framework, and ends with the strongest counter-argument. It gives no trade advice. | Asking about de-dollarization, RMB internationalization, China's deflation, whether AI is a bubble, or how a chief-economist-style macro view would read an asset |
-
 | [`webnovel-workflow`](skills/webnovel-workflow/SKILL.md) | Takes an author from an idea to a finished long-form Chinese web novel, one chapter at a time. A project archive on disk holds the book's state; each new conversation starts with a read-only check and a per-chapter context pack pulled from the archive by name, plus a handover note of what the author said last time. It stops only for decisions about direction and brings at most three of them at a time with a recommended default. A reader with no access to the outline checks each chapter, a small tool does the filing and word counts, and the author's own edits are diffed to learn their taste. Adapted from [阿序AI 长篇小说工作流](https://github.com/asass-11/axu-novel) (4.0, updated to 5.0); CC BY-NC 4.0, not MIT. | Starting a novel from nothing, writing the next chapter, planning the next batch of chapter outlines, closing a volume, or fixing a passage that reads wrong |
+| [`more-ambitious`](skills/more-ambitious/SKILL.md) | Pushes a task past the average first attempt, after Felix Rieseberg's tutorial. It lays out an ambition ladder (the task, the outcome it serves, a system that makes it unnecessary), runs a depth pass (raw material, expert instruments, an unreasonable target) and a range pass (methods from other fields), asks you at most 3 questions only you can answer and lists the access that would unlock more. It then builds with measured targets and an outside judge, never grading itself. A bilingual prompt kit is included. | Saying "be more ambitious", "think bigger", "更激进" or "别保守", or when an agent keeps settling for the obvious version of a task you care about |
 
 ## Plugins
 
@@ -45,6 +45,7 @@ Not everything here is a skill. A plugin can also carry hooks, which run on thei
 /plugin install douyin-finance-koubo@milesradford-skills
 /plugin install miao-yanliang-macro-lens@milesradford-skills
 /plugin install webnovel-workflow@milesradford-skills
+/plugin install more-ambitious@milesradford-skills
 /plugin install quota-handoff@milesradford-skills
 ```
 
