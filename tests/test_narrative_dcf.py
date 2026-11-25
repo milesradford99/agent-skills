@@ -107,3 +107,27 @@ class AuctionTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+import check_bold as cb  # noqa: E402
+
+
+class CheckBoldTest(unittest.TestCase):
+    def test_flags_closing_after_cjk_punctuation(self):
+        self.assertTrue(cb.problems("2. **最敏感的参数。**如果市场"))
+        self.assertTrue(cb.problems("- **利润率：**经调整净利率"))
+
+    def test_accepts_valid_bold(self):
+        for line in ["**最敏感的参数**。如果", "**结论：合理。**", "a **b** c", "“**名单**”仍在", "`**x。**y`"]:
+            self.assertEqual(cb.problems(line), [], line)
+
+    def test_flags_opening_before_punctuation(self):
+        self.assertTrue(cb.problems("市场**“名单”**仍在"))
+        self.assertTrue(cb.problems("**“名单”**仍在"))
+
+    def test_fix_moves_punctuation_outside(self):
+        self.assertEqual(cb.fix_line("2. **最敏感的参数。**如果"), "2. **最敏感的参数**。如果")
+        self.assertEqual(cb.fix_line("- **利润率：**经调整"), "- **利润率**：经调整")
+        self.assertEqual(cb.fix_line("市场**“名单”**仍在"), "市场“**名单**”仍在")
+        for line in ["**结论：合理。**", "a **b** c"]:
+            self.assertEqual(cb.fix_line(line), line)
